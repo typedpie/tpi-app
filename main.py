@@ -57,6 +57,31 @@ def productos(maquina: str = Query(...), db: Session = Depends(get_db)):
         ORDER BY pr.nombre
     """, {"m": maquina})
     return [r["nombre"] for r in rows]
+#----------------pagina inicio--------------
+@app.get("/", response_class=HTMLResponse)
+def home():
+    return """
+    <html>
+        <head>
+            <title>TPI - Captura de Tiempos</title>
+        </head>
+        <body style="font-family: Arial; text-align: center; margin-top: 50px;">
+            <h1>📊 TPI - Captura de Tiempos</h1>
+            <p>Selecciona una opción:</p>
+            <a href="/app/real">
+                <button style="padding: 10px 20px; margin: 10px; font-size: 16px;">
+                    Registrar tiempo REAL
+                </button>
+            </a>
+            <a href="/app/nominal">
+                <button style="padding: 10px 20px; margin: 10px; font-size: 16px;">
+                    Registrar tiempo NOMINAL
+                </button>
+            </a>
+        </body>
+    </html>
+    """
+#--------fin pagina inicio------------------
 
 # -------- Modelos de entrada --------
 class MedicionReal(BaseModel):
@@ -157,6 +182,13 @@ def app_real():
 <label>Operario (opcional)</label><input id="operario" type="text" />
 <button onclick="enviar()">Guardar</button>
 <p id="msg" class="small"></p>
+#------------boton volver al inicio--------
+
+<a href="/">
+  <button style="margin-top: 20px; padding: 8px 16px;">⬅ Volver al inicio</button>
+</a>
+#------- fin boton #
+                        
 <script>
 async function loadProcesos(){
   const r=await fetch('/options/procesos'); const d=await r.json();
@@ -192,6 +224,8 @@ document.getElementById('maquina').addEventListener('change',loadProductos);
 loadProcesos();
 </script>
 """)
+#-------------------------------
+
 
 @app.get("/app/nominal", response_class=HTMLResponse)
 def app_nominal():
@@ -208,6 +242,12 @@ def app_nominal():
 <textarea id="notas" placeholder="cómo convertiste a min/unidad"></textarea>
 <button onclick="enviar()">Guardar / Actualizar</button>
 <p id="msg" class="small"></p>
+                        
+<a href="/">
+  <button style="margin-top: 20px; padding: 8px 16px;">⬅ Volver al inicio</button>
+</a>
+                        
+                                                
 <script>
 async function loadProcesos(){
   const r=await fetch('/options/procesos'); const d=await r.json();
@@ -245,3 +285,6 @@ document.getElementById('maquina').addEventListener('change',loadProductos);
 loadProcesos();
 </script>
 """)
+#--------------------------------
+
+
