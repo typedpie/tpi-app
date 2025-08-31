@@ -182,12 +182,13 @@ def app_real():
 <label>Operario (opcional)</label><input id="operario" type="text" />
 <button onclick="enviar()">Guardar</button>
 <p id="msg" class="small"></p>
-#------------boton volver al inicio--------
+                        
+<!-- boton para volver inicio -->
 
 <a href="/">
   <button style="margin-top: 20px; padding: 8px 16px;">⬅ Volver al inicio</button>
 </a>
-#------- fin boton #
+<!-- boton para volver inicio -->
                         
 <script>
 async function loadProcesos(){
@@ -224,7 +225,7 @@ document.getElementById('maquina').addEventListener('change',loadProductos);
 loadProcesos();
 </script>
 """)
-#-------------------------------
+
 
 
 @app.get("/app/nominal", response_class=HTMLResponse)
@@ -243,11 +244,12 @@ def app_nominal():
 <button onclick="enviar()">Guardar / Actualizar</button>
 <p id="msg" class="small"></p>
                         
+<!-- boton para volver inicio -->                        
 <a href="/">
   <button style="margin-top: 20px; padding: 8px 16px;">⬅ Volver al inicio</button>
 </a>
-                        
-                                                
+<!-- boton para volver inicio -->
+
 <script>
 async function loadProcesos(){
   const r=await fetch('/options/procesos'); const d=await r.json();
