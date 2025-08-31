@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 #------------------------------------
 from fastapi import Request
-import Os 
+import os 
 
 
 app = FastAPI(title="TPI – Captura de Tiempos")
