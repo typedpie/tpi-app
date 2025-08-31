@@ -324,6 +324,13 @@ def home():
                     Registrar tiempo NOMINAL
                 </button>
             </a>
+            <div style="margin-top:20px;">
+              <a href="/admin/login">
+                  <button style="padding: 10px 20px; font-size: 16px;">
+                      ✏️ Editar (admin)
+                  </button>
+              </a>
+            </div>
         </body>
     </html>
     """
