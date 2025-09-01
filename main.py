@@ -277,8 +277,17 @@ def admin_delete_nominal(id_tiempo_nominal: int, request: Request, db: Session =
 # -------- Endpoints de catálogos (para selects en cascada) --------
 @app.get("/options/procesos")
 def procesos(db: Session = Depends(get_db)):
-    rows = q1(db, "SELECT nombre FROM proceso ORDER BY nombre")
-    return [r["nombre"] for r in rows]
+    rows = q1(db, """
+        SELECT p.nombre
+        FROM proceso p
+        WHERE p.id_proceso NOT IN (
+            SELECT id_proceso FROM grupo_proceso_detalle
+        )
+        ORDER BY p.nombre
+    """)
+    return [r["nombre"] for r in rows]           
+              
+    
 
 @app.get("/options/maquinas")
 def maquinas(proceso: str = Query(...), db: Session = Depends(get_db)):
