@@ -279,13 +279,8 @@ def admin_delete_nominal(id_tiempo_nominal: int, request: Request, db: Session =
 def procesos(db: Session = Depends(get_db)):
     rows = q1(db, """
         SELECT DISTINCT p.nombre
-        FROM proceso p
-        WHERE 
-            -- Usables: tienen al menos una máquina
-            EXISTS (SELECT 1 FROM proceso_maquina pm WHERE pm.id_proceso = p.id_proceso)
-            OR 
-            -- Usables: son hijos de algún grupo
-            p.id_proceso IN (SELECT id_proceso FROM grupo_proceso_detalle)
+        FROM public.proceso p
+        JOIN public.proceso_maquina pm ON pm.id_proceso = p.id_proceso
         ORDER BY p.nombre
     """)
     return [r["nombre"] for r in rows]
