@@ -119,7 +119,7 @@ def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get
     rows = q1(db, """
     SELECT
       tr.id_tiempo_real,
-      to_char(tr.fecha, 'YYYY-MM-DD HH24:MI') AS fecha,   -- 👈 formateado
+      to_char(tr.fecha AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI') AS fecha,
       tr.tiempo_min,
       tr.operario,
       p.nombre  AS proceso,
@@ -192,24 +192,24 @@ def admin_delete_real(id_tiempo_real: int, request: Request, db: Session = Depen
 def admin_list_nominal(request: Request, limit: int = 100, db: Session = Depends(get_db)):
     check_admin_token(request)
     rows = q1(db, """
-        SELECT
-          tn.id_tiempo_nominal,
-          tn.tiempo_min,
-          tn.fuente,
-          tn.valor_original,
-          tn.unidad_original,
-          tn.notas,
-          tn.fecha_fuente,
-          p.nombre  AS proceso,
-          m.nombre  AS maquina,
-          pr.nombre AS producto
-        FROM tiempo_nominal tn
-        JOIN proceso  p  ON p.id_proceso  = tn.id_proceso
-        JOIN maquina  m  ON m.id_maquina  = tn.id_maquina
-        JOIN producto pr ON pr.id_producto = tn.id_producto
-        ORDER BY tn.fecha_fuente DESC NULLS LAST
-        LIMIT :lim
-    """, {"lim": limit})
+    SELECT
+      tn.id_tiempo_nominal,
+      tn.tiempo_min,
+      tn.fuente,
+      tn.valor_original,
+      tn.unidad_original,
+      tn.notas,
+      to_char(tn.fecha_fuente AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI') AS fecha_fuente,
+      p.nombre  AS proceso,
+      m.nombre  AS maquina,
+      pr.nombre AS producto
+    FROM tiempo_nominal tn
+    JOIN proceso  p  ON p.id_proceso  = tn.id_proceso
+    JOIN maquina  m  ON m.id_maquina  = tn.id_maquina
+    JOIN producto pr ON pr.id_producto = tn.id_producto
+    ORDER BY tn.fecha_fuente DESC NULLS LAST
+    LIMIT :lim
+""", {"lim": limit})
 
     html = ["""
     <html><head><title>Admin NOMINALES</title></head>
