@@ -459,7 +459,7 @@ async function loadMaquinas(){
   const p=document.getElementById('proceso').value;
   const r=await fetch('/options/maquinas?proceso='+encodeURIComponent(p)); const d=await r.json();
   const s=document.getElementById('maquina'); s.innerHTML='<option value="">-- selecciona --</option>';
-  d.forEach(x=>s.innerHTML+=`<option>${x}</option>`); document.getElementById('producto').innerHTML='';
+  d.forEach(x=>s.innerHTML+=`<option>${x}</option>`); document.getElementById('producto').innerHTML='<option value="">-- selecciona --</option>';
 }
 async function loadProductos(){
   const m=document.getElementById('maquina').value;
@@ -467,7 +467,20 @@ async function loadProductos(){
   const s=document.getElementById('producto'); s.innerHTML='<option value="">-- selecciona --</option>';
   d.forEach(x=>s.innerHTML+=`<option>${x}</option>`);
 }
+
+function resetReal(){
+  document.getElementById('proceso').value = '';
+  document.getElementById('maquina').innerHTML  = '<option value="">-- selecciona --</option>';
+  document.getElementById('producto').innerHTML = '<option value="">-- selecciona --</option>';
+  document.getElementById('tiempo').value = '';
+  document.getElementById('operario').value = '';
+}
+
 async function enviar(){
+  const btn = event?.target || document.querySelector('button[onclick="enviar()"]');
+  if (btn?.disabled) return;
+  btn && (btn.disabled = true);
+
   const body={
     proceso:document.getElementById('proceso').value,
     maquina:document.getElementById('maquina').value,
@@ -476,8 +489,14 @@ async function enviar(){
     operario:document.getElementById('operario').value||null
   };
   const r=await fetch('/tiempo-real',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  document.getElementById('msg').textContent = r.ok ? '✅ Guardado' : '❌ Error: '+(await r.text());
-  if(r.ok){document.getElementById('tiempo').value=''; document.getElementById('operario').value='';}
+  if(r.ok){
+    document.getElementById('msg').textContent='✅ Guardado';
+    resetReal();            // ← limpia todo
+    loadProcesos();         // ← por si cambió el catálogo
+  }else{
+    document.getElementById('msg').textContent='❌ Error: '+(await r.text());
+  }
+  btn && (btn.disabled = false);
 }
 document.getElementById('proceso').addEventListener('change',loadMaquinas);
 document.getElementById('maquina').addEventListener('change',loadProductos);
@@ -519,7 +538,7 @@ async function loadMaquinas(){
   const p=document.getElementById('proceso').value;
   const r=await fetch('/options/maquinas?proceso='+encodeURIComponent(p)); const d=await r.json();
   const s=document.getElementById('maquina'); s.innerHTML='<option value="">-- selecciona --</option>';
-  d.forEach(x=>s.innerHTML+=`<option>${x}</option>`); document.getElementById('producto').innerHTML='';
+  d.forEach(x=>s.innerHTML+=`<option>${x}</option>`); document.getElementById('producto').innerHTML='<option value="">-- selecciona --</option>';
 }
 async function loadProductos(){
   const m=document.getElementById('maquina').value;
@@ -527,7 +546,23 @@ async function loadProductos(){
   const s=document.getElementById('producto'); s.innerHTML='<option value="">-- selecciona --</option>';
   d.forEach(x=>s.innerHTML+=`<option>${x}</option>`);
 }
+
+function resetNominal(){
+  document.getElementById('proceso').value = '';
+  document.getElementById('maquina').innerHTML  = '<option value="">-- selecciona --</option>';
+  document.getElementById('producto').innerHTML = '<option value="">-- selecciona --</option>';
+  document.getElementById('tiempo').value = '';
+  document.getElementById('fuente').value = 'ficha_tecnica';
+  document.getElementById('valor').value = '';
+  document.getElementById('unidad').value = '';
+  document.getElementById('notas').value = '';
+}
+
 async function enviar(){
+  const btn = event?.target || document.querySelector('button[onclick="enviar()"]');
+  if (btn?.disabled) return;
+  btn && (btn.disabled = true);
+
   const body={
     proceso:document.getElementById('proceso').value,
     maquina:document.getElementById('maquina').value,
@@ -539,7 +574,14 @@ async function enviar(){
     notas:document.getElementById('notas').value||null
   };
   const r=await fetch('/tiempo-nominal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  document.getElementById('msg').textContent = r.ok ? '✅ Guardado/Actualizado' : '❌ Error: '+(await r.text());
+  if(r.ok){
+    document.getElementById('msg').textContent='✅ Guardado/Actualizado';
+    resetNominal();         // ← limpia todo
+    loadProcesos();         // ← refresca catálogo
+  }else{
+    document.getElementById('msg').textContent='❌ Error: '+(await r.text());
+  }
+  btn && (btn.disabled = false);
 }
 document.getElementById('proceso').addEventListener('change',loadMaquinas);
 document.getElementById('maquina').addEventListener('change',loadProductos);
