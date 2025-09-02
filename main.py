@@ -117,21 +117,21 @@ def admin_home(request: Request):
 def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get_db)):
     check_admin_token(request)
     rows = q1(db, """
-        SELECT
-          tr.id_tiempo_real,
-          tr.fecha,
-          tr.tiempo_min,
-          tr.operario,
-          p.nombre  AS proceso,
-          m.nombre  AS maquina,
-          pr.nombre AS producto
-        FROM tiempo_real tr
-        JOIN proceso  p  ON p.id_proceso  = tr.id_proceso
-        JOIN maquina  m  ON m.id_maquina  = tr.id_maquina
-        JOIN producto pr ON pr.id_producto = tr.id_producto
-        ORDER BY tr.fecha DESC
-        LIMIT :lim
-    """, {"lim": limit})
+    SELECT
+      tr.id_tiempo_real,
+      to_char(tr.fecha, 'YYYY-MM-DD HH24:MI') AS fecha,   -- 👈 formateado
+      tr.tiempo_min,
+      tr.operario,
+      p.nombre  AS proceso,
+      m.nombre  AS maquina,
+      pr.nombre AS producto
+    FROM tiempo_real tr
+    JOIN proceso  p  ON p.id_proceso  = tr.id_proceso
+    JOIN maquina  m  ON m.id_maquina  = tr.id_maquina
+    JOIN producto pr ON pr.id_producto = tr.id_producto
+    ORDER BY tr.fecha DESC
+    LIMIT :lim
+""", {"lim": limit})
 
     html = ["""
     <html><head><title>Admin REALES</title></head>
