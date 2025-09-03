@@ -130,7 +130,7 @@ def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get
     SELECT
       tr.id_tiempo_real,
       to_char(tr.fecha AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI') AS fecha,
-      tr.tiempo_min,
+      tr.tiempo_seg,
       tr.operario,
       tr.tipo,                                    
       p.nombre  AS proceso,
@@ -177,7 +177,7 @@ def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get
           <td>{r['maquina']}</td>
           <td>{r['producto']}</td>
           <td>{tipo_txt}</td>
-          <td>{r['tiempo_min']}</td>
+          <td>{r['tiempo_seg']}</td>
           <td>{r.get('operario') or ''}</td>
           <td>
             <form method="post" action="/admin/real/delete/{r['id_tiempo_real']}" 
@@ -218,7 +218,7 @@ def admin_list_nominal(request: Request, limit: int = 100, db: Session = Depends
         rows = q1(db, """
             SELECT
               tn.id_tiempo_nominal,
-              tn.tiempo_min,
+              tn.tiempo_seg,
               tn.fuente,
               tn.valor_original,
               tn.unidad_original,
@@ -278,7 +278,7 @@ def admin_list_nominal(request: Request, limit: int = 100, db: Session = Depends
           <td>{r['maquina']}</td>
           <td>{r['producto']}</td>
           <td>{tipo_txt}</td>
-          <td>{r['tiempo_min']}</td>
+          <td>{r['tiempo_seg']}</td>
           <td>{r.get('fuente') or ''}</td>
           <td>{r.get('valor_original') or ''}</td>
           <td>{r.get('unidad_original') or ''}</td>
