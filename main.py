@@ -462,8 +462,9 @@ def app_real():
 <label>Producto</label><select id="producto"></select>
 <label>Tipo de tiempo</label>
 <select id="tipo">
-  <option value="proceso">T_Proceso</option>
-  <option value="setup">SetUp</option>
+  <option value="">-- selecciona --</option>                      
+  <option value="setup">SetUp</option>                     
+  <option value="proceso">Proceso</option>
   <option value="postproceso">Post-proceso</option>
   <option value="espera">Espera</option>
 </select>                        
@@ -502,7 +503,7 @@ function resetReal(){
   document.getElementById('proceso').value = '';
   document.getElementById('maquina').innerHTML  = '<option value="">-- selecciona --</option>';
   document.getElementById('producto').innerHTML = '<option value="">-- selecciona --</option>';
-  document.getElementById('tipo').value = 'proceso';                      
+  document.getElementById('tipo').value = '';                      
   document.getElementById('tiempo').value = '';
   document.getElementById('operario').value = '';
 }
@@ -547,8 +548,9 @@ def app_nominal():
 <label>Producto</label><select id="producto"></select>
 <label>Tipo de tiempo</label>
 <select id="tipo">
-  <option value="proceso">T_Proceso</option>
-  <option value="setup">SetUp</option>
+  <option value="">-- selecciona --</option>
+  <option value="setup">SetUp</option>                                            
+  <option value="proceso">Proceso</option>
   <option value="postproceso">Post-proceso</option>
   <option value="espera">Espera</option>
 </select>                        
@@ -590,7 +592,7 @@ function resetNominal(){
   document.getElementById('proceso').value = '';
   document.getElementById('maquina').innerHTML  = '<option value="">-- selecciona --</option>';
   document.getElementById('producto').innerHTML = '<option value="">-- selecciona --</option>';
-  document.getElementById('tipo').value = 'proceso';                      
+  document.getElementById('tipo').value = '';                      
   document.getElementById('tiempo').value = '';
   document.getElementById('fuente').value = 'ficha_tecnica';
   document.getElementById('valor').value = '';
