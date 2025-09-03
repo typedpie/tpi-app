@@ -213,26 +213,30 @@ def admin_delete_real(id_tiempo_real: int, request: Request, db: Session = Depen
 @app.get("/admin/nominal", response_class=HTMLResponse)
 def admin_list_nominal(request: Request, limit: int = 100, db: Session = Depends(get_db)):
     check_admin_token(request)
-    rows = q1(db, """
-    SELECT
-      tn.id_tiempo_nominal,
-      tn.tiempo_min,
-      tn.fuente,
-      tn.valor_original,
-      tn.unidad_original,
-      tn.notas,
-      tn.tipo,                                                     
-      to_char(tn.fecha_fuente AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI') AS fecha_fuente,
-      p.nombre  AS proceso,
-      m.nombre  AS maquina,
-      pr.nombre AS producto
-    FROM tiempo_nominal tn
-    JOIN proceso  p  ON p.id_proceso  = tn.id_proceso
-    JOIN maquina  m  ON m.id_maquina  = tn.id_maquina
-    JOIN producto pr ON pr.id_producto = tn.id_producto
-    ORDER BY tn.fecha_fuente DESC NULLS LAST
-    LIMIT :lim
-""", {"lim": limit})
+
+    try:
+        rows = q1(db, """
+            SELECT
+              tn.id_tiempo_nominal,
+              tn.tiempo_min,
+              tn.fuente,
+              tn.valor_original,
+              tn.unidad_original,
+              tn.notas,
+              tn.tipo,  -- 👈 importante
+              to_char(tn.fecha_fuente AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI') AS fecha_txt,
+              p.nombre  AS proceso,
+              m.nombre  AS maquina,
+              pr.nombre AS producto
+            FROM tiempo_nominal tn
+            JOIN proceso  p  ON p.id_proceso  = tn.id_proceso
+            JOIN maquina  m  ON m.id_maquina  = tn.id_maquina
+            JOIN producto pr ON pr.id_producto = tn.id_producto
+            ORDER BY tn.fecha_fuente DESC NULLS LAST
+            LIMIT :lim
+        """, {"lim": limit})
+    except Exception as e:
+        return HTMLResponse(f"<pre style='padding:16px;font-family:monospace;'>Error consultando BD:\n{e}</pre>", status_code=500)
 
     html = ["""
     <html><head><title>Admin NOMINALES</title></head>
@@ -245,37 +249,53 @@ def admin_list_nominal(request: Request, limit: int = 100, db: Session = Depends
       </p>
       <table border="1" cellpadding="6" cellspacing="0">
         <tr>
-          <th>ID</th><th>Proceso</th><th>Máquina</th><th>Producto</th>
-          <th>ID</th><th>Fecha</th><th>Proceso</th><th>Máquina</th><th>Producto</th><th><b>Tipo</b></th><th>Tiempo (min)</th><th>Operario</th><th>Acciones</th>
-          <th>Nominal (min)</th><th>Fuente</th><th>Original</th><th>Unidad</th><th>Notas</th><th>Fecha</th><th>Acciones</th>
+          <th>ID</th>
+          <th>Proceso</th>
+          <th>Máquina</th>
+          <th>Producto</th>
+          <th>Tipo</th>
+          <th>Nominal (min)</th>
+          <th>Fuente</th>
+          <th>Original</th>
+          <th>Unidad</th>
+          <th>Notas</th>
+          <th>Fecha</th>
+          <th>Acciones</th>
         </tr>
     """]
+
+    TIPO_LABEL = {"proceso":"T_Proceso","setup":"SetUp","postproceso":"Post-proceso","espera":"Espera"}
+
     for r in rows:
+        tipo_txt = TIPO_LABEL.get(r.get('tipo'), r.get('tipo') or '—')
         notas = (r.get('notas') or '')
         notas_corta = (notas[:60] + '…') if len(notas) > 60 else notas
+
         html.append(f"""
         <tr>
           <td>{r['id_tiempo_nominal']}</td>
           <td>{r['proceso']}</td>
           <td>{r['maquina']}</td>
           <td>{r['producto']}</td>
-          <td>{r['tipo']}</td>
+          <td>{tipo_txt}</td>
           <td>{r['tiempo_min']}</td>
           <td>{r.get('fuente') or ''}</td>
           <td>{r.get('valor_original') or ''}</td>
           <td>{r.get('unidad_original') or ''}</td>
           <td>{notas_corta}</td>
-          <td>{r.get('fecha_fuente') or ''}</td>
+          <td>{r.get('fecha_txt') or ''}</td>
           <td>
-            <form method="post" action="/admin/nominal/delete/{r['id_tiempo_nominal']}" onsubmit="return confirm('¿Eliminar NOMINAL #{r['id_tiempo_nominal']}?');">
+            <form method="post" action="/admin/nominal/delete/{r['id_tiempo_nominal']}"
+                  onsubmit="return confirm('¿Eliminar NOMINAL #{r['id_tiempo_nominal']}?');">
               <button type="submit">❌ Eliminar</button>
             </form>
           </td>
         </tr>
         """)
+
     html.append("""
       </table>
-      <p style="margin-top:10px;">Recuerda: hay restricción única por (proceso, máquina, producto).</p>
+      <p style="margin-top:10px;">Recuerda: hay restricción única por (máquina, producto, <b>tipo</b>).</p>
       <p>
         <a href="/admin">⬅ Volver al panel</a> |
         <a href="/">⬅ Volver al inicio (no admin)</a>
