@@ -35,6 +35,16 @@ def id_by_name(db: Session, table: str, name: str | None):
 def must(cond: bool, msg: str):
     if not cond: raise HTTPException(400, msg)
 
+def norm_tipo(s: str | None) -> str:
+    v = (s or "").strip().lower()
+    mapping = {
+        "setup": "setup", "set-up": "setup", "set_up": "setup",
+        "t_proceso": "proceso", "tproceso": "proceso", "proceso": "proceso",
+        "postproceso": "postproceso", "post-proceso": "postproceso", "post": "postproceso",
+        "espera": "espera", "wait": "espera"
+    }
+    return mapping.get(v, "proceso")
+
 #----------admin cambios -----------
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN")  # configurar en Render
 
@@ -122,6 +132,7 @@ def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get
       to_char(tr.fecha AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI') AS fecha,
       tr.tiempo_min,
       tr.operario,
+      tr.tipo,                                    
       p.nombre  AS proceso,
       m.nombre  AS maquina,
       pr.nombre AS producto
@@ -145,6 +156,7 @@ def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get
       <table border="1" cellpadding="6" cellspacing="0">
         <tr>
           <th>ID</th><th>Fecha</th><th>Proceso</th><th>Máquina</th><th>Producto</th>
+          <th>ID</th><th>Fecha</th><th>Proceso</th><th>Máquina</th><th>Producto</th><th><b>Tipo</b></th><th>Tiempo (min)</th><th>Operario</th><th>Acciones</th>
           <th>Tiempo (min)</th><th>Operario</th><th>Acciones</th>
         </tr>
     """]
@@ -156,6 +168,7 @@ def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get
           <td>{r['proceso']}</td>
           <td>{r['maquina']}</td>
           <td>{r['producto']}</td>
+          <td>{r['tipo']}</td>
           <td>{r['tiempo_min']}</td>
           <td>{r.get('operario') or ''}</td>
           <td>
@@ -199,6 +212,7 @@ def admin_list_nominal(request: Request, limit: int = 100, db: Session = Depends
       tn.valor_original,
       tn.unidad_original,
       tn.notas,
+      tn.tipo,                                                     
       to_char(tn.fecha_fuente AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI') AS fecha_fuente,
       p.nombre  AS proceso,
       m.nombre  AS maquina,
@@ -223,6 +237,7 @@ def admin_list_nominal(request: Request, limit: int = 100, db: Session = Depends
       <table border="1" cellpadding="6" cellspacing="0">
         <tr>
           <th>ID</th><th>Proceso</th><th>Máquina</th><th>Producto</th>
+          <th>ID</th><th>Fecha</th><th>Proceso</th><th>Máquina</th><th>Producto</th><th><b>Tipo</b></th><th>Tiempo (min)</th><th>Operario</th><th>Acciones</th>
           <th>Nominal (min)</th><th>Fuente</th><th>Original</th><th>Unidad</th><th>Notas</th><th>Fecha</th><th>Acciones</th>
         </tr>
     """]
@@ -235,6 +250,7 @@ def admin_list_nominal(request: Request, limit: int = 100, db: Session = Depends
           <td>{r['proceso']}</td>
           <td>{r['maquina']}</td>
           <td>{r['producto']}</td>
+          <td>{r['tipo']}</td>
           <td>{r['tiempo_min']}</td>
           <td>{r.get('fuente') or ''}</td>
           <td>{r.get('valor_original') or ''}</td>
@@ -347,6 +363,7 @@ class MedicionReal(BaseModel):
     proceso: str
     maquina: str
     producto: str
+    tipo: str | None = "proceso"  # setup | proceso | postproceso | espera
     tiempo_min: condecimal(max_digits=10, decimal_places=3)
     operario: str | None = None
 
@@ -354,6 +371,7 @@ class TiempoNominal(BaseModel):
     proceso: str
     maquina: str
     producto: str
+    tipo: str | None = "proceso"
     tiempo_min: condecimal(max_digits=10, decimal_places=3)
     fuente: str | None = "ficha_tecnica"
     valor_original: float | None = None
@@ -378,11 +396,13 @@ def crear_real(data: MedicionReal, db: Session = Depends(get_db)):
                 {"m": id_maquina, "pr": id_producto})
     must(bool(mp), "Ese producto NO está asociado a esa máquina")
 
+    tipo = norm_tipo(data.tipo)
+
     db.execute(text("""
-        INSERT INTO tiempo_real (id_proceso, id_maquina, id_producto, tiempo_min, operario)
-        VALUES (:p,:m,:pr,:t,:op)
+        INSERT INTO tiempo_real (id_proceso, id_maquina, id_producto, tipo, tiempo_min, operario)
+        VALUES (:p,:m,:pr,:tipo,:t,:op)
     """), {"p": id_proceso, "m": id_maquina, "pr": id_producto,
-           "t": str(data.tiempo_min), "op": data.operario})
+           "tipo": tipo, "t": str(data.tiempo_min), "op": data.operario})
     db.commit()
     return {"ok": True}
 
@@ -403,17 +423,20 @@ def upsert_nominal(data: TiempoNominal, db: Session = Depends(get_db)):
                 {"m": id_maquina, "pr": id_producto})
     must(bool(mp), "Ese producto NO está asociado a esa máquina")
 
+    tipo = norm_tipo(data.tipo)
+
     db.execute(text("""
-        INSERT INTO tiempo_nominal (id_proceso, id_maquina, id_producto, tiempo_min, fuente, valor_original, unidad_original, notas)
-        VALUES (:p,:m,:pr,:t,:f,:vo,:uo,:n)
-        ON CONFLICT (id_proceso, id_maquina, id_producto)
+        INSERT INTO tiempo_nominal
+          (id_proceso, id_maquina, id_producto, tipo, tiempo_min, fuente, valor_original, unidad_original, notas)
+        VALUES (:p,:m,:pr,:tipo,:t,:f,:vo,:uo,:n)
+        ON CONFLICT (id_maquina, id_producto, tipo)
         DO UPDATE SET tiempo_min=EXCLUDED.tiempo_min,
                       fuente=COALESCE(EXCLUDED.fuente, tiempo_nominal.fuente),
                       valor_original=EXCLUDED.valor_original,
                       unidad_original=EXCLUDED.unidad_original,
                       notas=EXCLUDED.notas,
                       fecha_fuente=NOW();
-    """), {"p": id_proceso, "m": id_maquina, "pr": id_producto,
+    """), {"p": id_proceso, "m": id_maquina, "pr": id_producto, "tipo": tipo,
            "t": str(data.tiempo_min), "f": data.fuente,
            "vo": data.valor_original, "uo": data.unidad_original, "n": data.notas})
     db.commit()
@@ -437,6 +460,13 @@ def app_real():
 <label>Proceso</label><select id="proceso"></select>
 <label>Máquina</label><select id="maquina"></select>
 <label>Producto</label><select id="producto"></select>
+<label>Tipo de tiempo</label>
+<select id="tipo">
+  <option value="proceso">T_Proceso</option>
+  <option value="setup">SetUp</option>
+  <option value="postproceso">Post-proceso</option>
+  <option value="espera">Espera</option>
+</select>                        
 <label>Tiempo (min)</label><input id="tiempo" type="number" step="0.001" />
 <label>Operario (opcional)</label><input id="operario" type="text" />
 <button onclick="enviar()">Guardar</button>
@@ -472,6 +502,7 @@ function resetReal(){
   document.getElementById('proceso').value = '';
   document.getElementById('maquina').innerHTML  = '<option value="">-- selecciona --</option>';
   document.getElementById('producto').innerHTML = '<option value="">-- selecciona --</option>';
+  document.getElementById('tipo').value = 'proceso';                      
   document.getElementById('tiempo').value = '';
   document.getElementById('operario').value = '';
 }
@@ -485,6 +516,7 @@ async function enviar(){
     proceso:document.getElementById('proceso').value,
     maquina:document.getElementById('maquina').value,
     producto:document.getElementById('producto').value,
+    tipo:document.getElementById('tipo').value,                    
     tiempo_min:document.getElementById('tiempo').value,
     operario:document.getElementById('operario').value||null
   };
@@ -513,6 +545,13 @@ def app_nominal():
 <label>Proceso</label><select id="proceso"></select>
 <label>Máquina</label><select id="maquina"></select>
 <label>Producto</label><select id="producto"></select>
+<label>Tipo de tiempo</label>
+<select id="tipo">
+  <option value="proceso">T_Proceso</option>
+  <option value="setup">SetUp</option>
+  <option value="postproceso">Post-proceso</option>
+  <option value="espera">Espera</option>
+</select>                        
 <label>Tiempo (min)</label><input id="tiempo" type="number" step="0.001" />
 <label class="small">Metadatos (opcional)</label>
 <input id="fuente" placeholder="ficha_tecnica / manual / estimacion" />
@@ -551,6 +590,7 @@ function resetNominal(){
   document.getElementById('proceso').value = '';
   document.getElementById('maquina').innerHTML  = '<option value="">-- selecciona --</option>';
   document.getElementById('producto').innerHTML = '<option value="">-- selecciona --</option>';
+  document.getElementById('tipo').value = 'proceso';                      
   document.getElementById('tiempo').value = '';
   document.getElementById('fuente').value = 'ficha_tecnica';
   document.getElementById('valor').value = '';
@@ -567,6 +607,7 @@ async function enviar(){
     proceso:document.getElementById('proceso').value,
     maquina:document.getElementById('maquina').value,
     producto:document.getElementById('producto').value,
+    tipo:document.getElementById('tipo').value,                    
     tiempo_min:document.getElementById('tiempo').value,
     fuente:document.getElementById('fuente').value||'ficha_tecnica',
     valor_original:document.getElementById('valor').value?Number(document.getElementById('valor').value):null,
