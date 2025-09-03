@@ -710,32 +710,32 @@ loadProcesos();
 def app_nominal():
     return HTMLResponse(FORM_STYLE + """
 <h2>Registrar tiempo NOMINAL (ficha técnica)</h2>
+
 <label>Proceso</label><select id="proceso"></select>
 <label>Máquina</label><select id="maquina"></select>
 <label>Producto</label><select id="producto"></select>
+
 <label>Tipo de tiempo</label>
 <select id="tipo">
   <option value="">-- selecciona --</option>
-  <option value="setup">SetUp</option>                                            
+  <option value="setup">SetUp</option>
   <option value="proceso">Proceso</option>
   <option value="postproceso">Post-proceso</option>
   <option value="espera">Espera</option>
-</select>                        
+</select>
+
 <label>Tiempo (segundos)</label>
-<input id="tiempo" type="number" step="1" placeholder="ej: 180" />
+<input id="tiempo_seg" type="number" step="1" placeholder="ej: 180" />
+
 <label class="small">Metadatos (opcional)</label>
 <input id="fuente" placeholder="ficha_tecnica / manual / estimacion" />
-<input id="valor" type="number" step="0.0001" placeholder="valor original (ej 40.0000)" />
 <input id="unidad" placeholder="unidad original (ej perforaciones/min)" />
 <textarea id="notas" placeholder="cómo convertiste a min/unidad"></textarea>
+
 <button onclick="enviar()">Guardar / Actualizar</button>
 <p id="msg" class="small"></p>
-                        
-<!-- boton para volver inicio -->                        
-<a href="/">
-  <button style="margin-top: 20px; padding: 8px 16px;">⬅ Volver al inicio</button>
-</a>
-<!-- boton para volver inicio -->
+
+<a href="/"><button style="margin-top:20px; padding:8px 16px;">⬅ Volver al inicio</button></a>
 
 <script>
 async function loadProcesos(){
@@ -747,7 +747,8 @@ async function loadMaquinas(){
   const p=document.getElementById('proceso').value;
   const r=await fetch('/options/maquinas?proceso='+encodeURIComponent(p)); const d=await r.json();
   const s=document.getElementById('maquina'); s.innerHTML='<option value="">-- selecciona --</option>';
-  d.forEach(x=>s.innerHTML+=`<option>${x}</option>`); document.getElementById('producto').innerHTML='<option value="">-- selecciona --</option>';
+  d.forEach(x=>s.innerHTML+=`<option>${x}</option>`); 
+  document.getElementById('producto').innerHTML='<option value="">-- selecciona --</option>';
 }
 async function loadProductos(){
   const m=document.getElementById('maquina').value;
@@ -761,8 +762,8 @@ function resetNominal(){
   document.getElementById('maquina').innerHTML  = '<option value="">-- selecciona --</option>';
   document.getElementById('producto').innerHTML = '<option value="">-- selecciona --</option>';
   document.getElementById('tipo').value = '';
-  document.getElementById('tiempo').value = '';              // ← segundos
-  document.getElementById('fuente').value = 'ficha_tecnica';
+  document.getElementById('tiempo_seg').value = '';
+  document.getElementById('fuente').value = '';          // <— sin valor por defecto
   document.getElementById('unidad').value = '';
   document.getElementById('notas').value = '';
 }
@@ -775,42 +776,38 @@ async function enviar(){
   const maquina  = document.getElementById('maquina').value;
   const producto = document.getElementById('producto').value;
   const tipo     = document.getElementById('tipo').value;
-  const tiempo   = Number(document.getElementById('tiempo').value); // segundos
+  const tseg     = Number(document.getElementById('tiempo_seg').value);
 
-  if (!proceso || !maquina || !producto){
-    document.getElementById('msg').textContent = '❌ Completa Proceso, Máquina y Producto.';
+  if(!proceso || !maquina || !producto || !tipo){
+    document.getElementById('msg').textContent='❌ Completa Proceso, Máquina, Producto y Tipo.';
     btn.disabled=false; return;
   }
-  if (!tipo){
-    document.getElementById('msg').textContent = '❌ Selecciona el tipo de tiempo.';
-    btn.disabled=false; return;
-  }
-  if (!tiempo || tiempo <= 0){
-    document.getElementById('msg').textContent = '❌ Ingresa un tiempo válido en segundos.';
+  if(!tseg || tseg<=0){
+    document.getElementById('msg').textContent='❌ Ingresa un tiempo válido en segundos.';
     btn.disabled=false; return;
   }
 
   const body = {
-    proceso, maquina, producto, tipo,
-    tiempo_seg: Number(tiempo).toFixed(3),
-    fuente: document.getElementById('fuente').value || 'ficha_tecnica',
+    proceso: proceso,
+    maquina: maquina,
+    producto: producto,
+    tipo: tipo,
+    tiempo_seg: Number(tseg).toFixed(3),   // segundos
+    fuente: document.getElementById('fuente').value || null,
     unidad_original: document.getElementById('unidad').value || null,
     notas: document.getElementById('notas').value || null
   };
 
-  const r = await fetch('/tiempo-nominal', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(body)
-  });
-
-  if (r.ok){
-    document.getElementById('msg').textContent = '✅ Guardado/Actualizado';
+  const r=await fetch('/tiempo-nominal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(r.ok){
+    document.getElementById('msg').textContent='✅ Guardado/Actualizado';
     resetNominal(); loadProcesos();
-  } else {
-    document.getElementById('msg').textContent = '❌ Error: ' + (await r.text());
+  }else{
+    document.getElementById('msg').textContent='❌ Error: '+(await r.text());
   }
   btn && (btn.disabled = false);
 }
+
 document.getElementById('proceso').addEventListener('change',loadMaquinas);
 document.getElementById('maquina').addEventListener('change',loadProductos);
 loadProcesos();
