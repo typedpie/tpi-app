@@ -486,30 +486,53 @@ button{background:#111;color:#fff;border:none}
 def app_real():
     return HTMLResponse(FORM_STYLE + """
 <h2>Registrar tiempo REAL</h2>
+
 <label>Proceso</label><select id="proceso"></select>
 <label>Máquina</label><select id="maquina"></select>
 <label>Producto</label><select id="producto"></select>
+
 <label>Tipo de tiempo</label>
 <select id="tipo">
-  <option value="">-- selecciona --</option>                      
-  <option value="setup">SetUp</option>                     
-  <option value="proceso">Proceso</option>
+  <option value="">-- selecciona --</option>
+  <option value="setup">SetUp</option>
+  <option value="proceso">T_Proceso</option>
   <option value="postproceso">Post-proceso</option>
   <option value="espera">Espera</option>
-</select>                        
-<label>Tiempo (min)</label><input id="tiempo" type="number" step="0.001" />
+</select>
+
+<label>Modo de captura</label>
+<select id="modo">
+  <option value="manual">Ingresar tiempo</option>
+  <option value="cronometro">Tomar tiempo (cronómetro)</option>
+</select>
+
+<!-- Caja: entrada manual -->
+<div id="box-manual" style="margin-top:6px;">
+  <label>Tiempo (min)</label>
+  <input id="tiempo" type="number" step="0.001" placeholder="ej: 3.250" />
+</div>
+
+<!-- Caja: cronómetro -->
+<div id="box-crono" style="display:none; margin-top:6px;">
+  <label>Tiempo (cronómetro)</label>
+  <div id="crono-display" style="font-size:28px;font-weight:700;padding:8px 0;">00:00.000</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button type="button" id="btn-start" onclick="cronoStart()">▶️ Iniciar</button>
+    <button type="button" id="btn-pause" onclick="cronoPause()" disabled>⏸️ Pausar</button>
+    <button type="button" id="btn-reset" onclick="cronoReset()" disabled>↺ Reiniciar</button>
+  </div>
+  <p id="crono-msg" class="small"></p>
+</div>
+
 <label>Operario (opcional)</label><input id="operario" type="text" />
+
 <button onclick="enviar()">Guardar</button>
 <p id="msg" class="small"></p>
-                        
-<!-- boton para volver inicio -->
 
-<a href="/">
-  <button style="margin-top: 20px; padding: 8px 16px;">⬅ Volver al inicio</button>
-</a>
-<!-- boton para volver inicio -->
-                        
+<a href="/"><button style="margin-top: 20px; padding: 8px 16px;">⬅ Volver al inicio</button></a>
+
 <script>
+// ------- catálogos -------
 async function loadProcesos(){
   const r=await fetch('/options/procesos'); const d=await r.json();
   const s=document.getElementById('proceso'); s.innerHTML='<option value="">-- selecciona --</option>';
@@ -519,7 +542,8 @@ async function loadMaquinas(){
   const p=document.getElementById('proceso').value;
   const r=await fetch('/options/maquinas?proceso='+encodeURIComponent(p)); const d=await r.json();
   const s=document.getElementById('maquina'); s.innerHTML='<option value="">-- selecciona --</option>';
-  d.forEach(x=>s.innerHTML+=`<option>${x}</option>`); document.getElementById('producto').innerHTML='<option value="">-- selecciona --</option>';
+  d.forEach(x=>s.innerHTML+=`<option>${x}</option>`); 
+  document.getElementById('producto').innerHTML='<option value="">-- selecciona --</option>';
 }
 async function loadProductos(){
   const m=document.getElementById('maquina').value;
@@ -528,38 +552,125 @@ async function loadProductos(){
   d.forEach(x=>s.innerHTML+=`<option>${x}</option>`);
 }
 
+// ------- UI modo manual/cronómetro -------
+const boxManual = ()=>document.getElementById('box-manual');
+const boxCrono  = ()=>document.getElementById('box-crono');
+
+document.getElementById('modo').addEventListener('change', ()=>{
+  const v = document.getElementById('modo').value;
+  if (v==='cronometro'){ boxManual().style.display='none'; boxCrono().style.display='block'; }
+  else { boxManual().style.display='block'; boxCrono().style.display='none'; }
+});
+
+// ------- Lógica de cronómetro -------
+let crono = { running:false, start:0, elapsed:0, hnd:null };
+
+function fmt(ms){
+  const m = Math.floor(ms/60000);
+  const s = Math.floor((ms%60000)/1000);
+  const cs = ms%1000;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(cs).padStart(3,'0')}`;
+}
+function paint(){
+  const now = Date.now();
+  const ms = crono.elapsed + (crono.running ? (now - crono.start) : 0);
+  document.getElementById('crono-display').textContent = fmt(ms);
+}
+function cronoStart(){
+  if (crono.running) return;
+  crono.running = true;
+  crono.start = Date.now();
+  crono.hnd = setInterval(paint, 33);
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-pause').disabled = false;
+  document.getElementById('btn-reset').disabled = false;
+  document.getElementById('crono-msg').textContent = '';
+}
+function cronoPause(){
+  if (!crono.running) return;
+  crono.running = false;
+  crono.elapsed += Date.now() - crono.start;
+  clearInterval(crono.hnd); crono.hnd=null;
+  paint();
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-pause').disabled = true;
+}
+function cronoReset(){
+  crono.running=false; crono.elapsed=0; crono.start=0;
+  clearInterval(crono.hnd); crono.hnd=null;
+  paint();
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-pause').disabled = true;
+  document.getElementById('btn-reset').disabled = true;
+  document.getElementById('crono-msg').textContent = '';
+}
+paint(); // inicializa 00:00.000
+
+// ------- reset formulario -------
 function resetReal(){
   document.getElementById('proceso').value = '';
   document.getElementById('maquina').innerHTML  = '<option value="">-- selecciona --</option>';
   document.getElementById('producto').innerHTML = '<option value="">-- selecciona --</option>';
-  document.getElementById('tipo').value = '';                      
+  document.getElementById('tipo').value = '';
+  document.getElementById('modo').value = 'manual';
+  boxManual().style.display='block'; boxCrono().style.display='none';
   document.getElementById('tiempo').value = '';
   document.getElementById('operario').value = '';
+  cronoReset();
 }
 
+// ------- enviar -------
 async function enviar(){
   const btn = event?.target || document.querySelector('button[onclick="enviar()"]');
-  if (btn?.disabled) return;
-  btn && (btn.disabled = true);
+  if (btn?.disabled) return; btn && (btn.disabled = true);
+
+  // Validaciones básicas
+  const proceso  = document.getElementById('proceso').value;
+  const maquina  = document.getElementById('maquina').value;
+  const producto = document.getElementById('producto').value;
+  const tipo     = document.getElementById('tipo').value;
+  const modo     = document.getElementById('modo').value;
+
+  if (!proceso || !maquina || !producto){ 
+    document.getElementById('msg').textContent='❌ Completa Proceso, Máquina y Producto.'; 
+    btn.disabled=false; return;
+  }
+  if (!tipo){
+    document.getElementById('msg').textContent='❌ Selecciona el tipo de tiempo.'; 
+    btn.disabled=false; return;
+  }
+
+  let tiempoMin = null;
+  if (modo==='cronometro'){
+    const ms = crono.elapsed + (crono.running ? (Date.now()-crono.start) : 0);
+    if (ms<=0){ document.getElementById('msg').textContent='❌ El cronómetro está en 0.'; btn.disabled=false; return; }
+    tiempoMin = (ms/60000); // a minutos
+  }else{
+    const v = Number(document.getElementById('tiempo').value);
+    if (!v || v<=0){ document.getElementById('msg').textContent='❌ Ingresa un tiempo válido en minutos.'; btn.disabled=false; return; }
+    tiempoMin = v;
+  }
 
   const body={
-    proceso:document.getElementById('proceso').value,
-    maquina:document.getElementById('maquina').value,
-    producto:document.getElementById('producto').value,
-    tipo:document.getElementById('tipo').value,                    
-    tiempo_min:document.getElementById('tiempo').value,
-    operario:document.getElementById('operario').value||null
+    proceso: proceso,
+    maquina: maquina,
+    producto: producto,
+    tiempo_min: Number(tiempoMin).toFixed(3),   // 3 decimales
+    operario: document.getElementById('operario').value || null,
+    tipo: tipo
   };
+
   const r=await fetch('/tiempo-real',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(r.ok){
     document.getElementById('msg').textContent='✅ Guardado';
-    resetReal();            // ← limpia todo
-    loadProcesos();         // ← por si cambió el catálogo
+    resetReal(); loadProcesos();
   }else{
     document.getElementById('msg').textContent='❌ Error: '+(await r.text());
   }
   btn && (btn.disabled = false);
 }
+
+// eventos iniciales
 document.getElementById('proceso').addEventListener('change',loadMaquinas);
 document.getElementById('maquina').addEventListener('change',loadProductos);
 loadProcesos();
