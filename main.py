@@ -161,7 +161,7 @@ def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get
       <th>Máquina</th>
       <th>Producto</th>
       <th>Tipo</th>
-      <th>Tiempo (min)</th>
+      <th>tiempo_seg</th>
       <th>Operario</th>
       <th>Acciones</th>
     </tr>
@@ -427,10 +427,10 @@ def crear_real(data: MedicionReal, db: Session = Depends(get_db)):
     tipo = norm_tipo(data.tipo)
 
     db.execute(text("""
-    INSERT INTO tiempo_real (id_proceso, id_maquina, id_producto, tiempo_min, operario, tipo)
-    VALUES (:p,:m,:pr,:t,:op,:tipo)
+    INSERT INTO tiempo_real (id_proceso, id_maquina, id_producto, tiempo_seg, operario, tipo)
+    VALUES (:p,:m,:pr,:t_seg,:op,:tipo)
 """), {"p": id_proceso, "m": id_maquina, "pr": id_producto,
-       "t": str(data.tiempo_seg), "op": data.operario, "tipo": data.tipo})
+       "t_seg": str(data.tiempo_seg), "op": data.operario, "tipo": data.tipo})
     db.commit()
     return {"ok": True}
 
@@ -455,10 +455,10 @@ def upsert_nominal(data: TiempoNominal, db: Session = Depends(get_db)):
 
     db.execute(text("""
         INSERT INTO tiempo_nominal
-          (id_proceso, id_maquina, id_producto, tipo, tiempo_min, fuente, unidad_original, notas)
-        VALUES (:p,:m,:pr,:tipo,:t,:f,:uo,:n)
+          (id_proceso, id_maquina, id_producto, tipo, tiempo_seg, fuente, unidad_original, notas)
+        VALUES (:p,:m,:pr,:tipo,:t_seg,:f,:uo,:n)
         ON CONFLICT (id_maquina, id_producto, tipo)
-        DO UPDATE SET tiempo_min=EXCLUDED.tiempo_min,
+        DO UPDATE SET tiempo_seg=EXCLUDED.tiempo_seg,
                       fuente=COALESCE(EXCLUDED.fuente, tiempo_nominal.fuente),
                       unidad_original=EXCLUDED.unidad_original,
                       notas=EXCLUDED.notas,
@@ -468,7 +468,7 @@ def upsert_nominal(data: TiempoNominal, db: Session = Depends(get_db)):
         "m": id_maquina,
         "pr": id_producto,
         "tipo": tipo,
-        "t": str(data.tiempo_seg),                 # ←SEGUNDOS
+        "t_seg": str(data.tiempo_seg),                 # ←SEGUNDOS
         "f": data.fuente,
         "uo": data.unidad_original,
         "n": data.notas
