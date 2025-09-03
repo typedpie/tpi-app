@@ -145,16 +145,16 @@ def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get
 """, {"lim": limit})
 
     html = ["""
-    <html><head><title>Admin REALES</title></head>
-    <body style="font-family: system-ui; padding: 16px; max-width: 1100px; margin: auto;">
-      <h2>🧭 Registros REALES recientes</h2>
-      <p>
-        <a href="/admin">⬅ Volver al panel</a> |
-        <a href="/">⬅ Volver al inicio (no admin)</a> |
-        <a href="/admin/logout">🚪 Salir del modo admin</a>
-      </p>
-      <table border="1" cellpadding="6" cellspacing="0">
-        <tr>
+<html><head><title>Admin REALES</title></head>
+<body style="font-family: system-ui; padding: 16px; max-width: 1100px; margin: auto;">
+  <h2>🧭 Registros REALES recientes</h2>
+  <p>
+    <a href="/admin">⬅ Volver al panel</a> |
+    <a href="/">⬅ Volver al inicio (no admin)</a> |
+    <a href="/admin/logout">🚪 Salir del modo admin</a>
+  </p>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <tr>
       <th>ID</th>
       <th>Fecha</th>
       <th>Proceso</th>
@@ -165,7 +165,7 @@ def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get
       <th>Operario</th>
       <th>Acciones</th>
     </tr>
-    """]
+"""]
     TIPO_LABEL = {"proceso":"T_Proceso","setup":"SetUp","postproceso":"Post-proceso","espera":"Espera"}
     for r in rows:
         tipo_txt = TIPO_LABEL.get(r['tipo'], r['tipo'])
@@ -180,7 +180,8 @@ def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get
           <td>{r['tiempo_min']}</td>
           <td>{r.get('operario') or ''}</td>
           <td>
-            <form method="post" action="/admin/real/delete/{r['id_tiempo_real']}" onsubmit="return confirm('¿Eliminar registro REAL #{r['id_tiempo_real']}?');">
+            <form method="post" action="/admin/real/delete/{r['id_tiempo_real']}" 
+                  onsubmit="return confirm('¿Eliminar registro REAL #{r['id_tiempo_real']}?');">
               <button type="submit">❌ Eliminar</button>
             </form>
           </td>
