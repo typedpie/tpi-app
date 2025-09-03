@@ -400,10 +400,9 @@ class TiempoNominal(BaseModel):
     proceso: str
     maquina: str
     producto: str
-    tipo: str                      # 'setup' | 'proceso' | 'postproceso' | 'espera'
-    tiempo_seg: condecimal(max_digits=10, decimal_places=3)  # en SEGUNDOS
+    tipo: str                               # 'setup' | 'proceso' | 'postproceso' | 'espera'
+    tiempo_seg: condecimal(max_digits=10, decimal_places=3)
     fuente: str | None = "ficha_tecnica"
-    valor_original: float | None = None
     unidad_original: str | None = None
     notas: str | None = None
 
@@ -444,39 +443,33 @@ def upsert_nominal(data: TiempoNominal, db: Session = Depends(get_db)):
     must(id_maquina is not None, "Máquina no existe")
     must(id_producto is not None, "Producto no existe")
 
-    pm = q1_one(db,
-        "SELECT 1 FROM proceso_maquina WHERE id_proceso=:p AND id_maquina=:m",
-        {"p": id_proceso, "m": id_maquina})
+    pm = q1_one(db, "SELECT 1 FROM proceso_maquina WHERE id_proceso=:p AND id_maquina=:m",
+                {"p": id_proceso, "m": id_maquina})
     must(bool(pm), "Esa máquina NO está asociada a ese proceso")
 
-    mp = q1_one(db,
-        "SELECT 1 FROM maquina_producto WHERE id_maquina=:m AND id_producto=:pr",
-        {"m": id_maquina, "pr": id_producto})
+    mp = q1_one(db, "SELECT 1 FROM maquina_producto WHERE id_maquina=:m AND id_producto=:pr",
+                {"m": id_maquina, "pr": id_producto})
     must(bool(mp), "Ese producto NO está asociado a esa máquina")
 
-    tipo = norm_tipo(data.tipo)  # setup / proceso / postproceso / espera
+    tipo = norm_tipo(data.tipo)
 
-    # IMPORTANTE: tiempo_min ahora almacena SEGUNDOS
     db.execute(text("""
         INSERT INTO tiempo_nominal
-          (id_proceso, id_maquina, id_producto, tipo, tiempo_min, fuente,
-           valor_original, unidad_original, notas)
-        VALUES (:p, :m, :pr, :tipo, :t, :f, :vo, :uo, :n)
+          (id_proceso, id_maquina, id_producto, tipo, tiempo_min, fuente, unidad_original, notas)
+        VALUES (:p,:m,:pr,:tipo,:t,:f,:uo,:n)
         ON CONFLICT (id_maquina, id_producto, tipo)
-        DO UPDATE SET tiempo_min      = EXCLUDED.tiempo_min,
-                      fuente          = COALESCE(EXCLUDED.fuente, tiempo_nominal.fuente),
-                      valor_original  = EXCLUDED.valor_original,
-                      unidad_original = EXCLUDED.unidad_original,
-                      notas           = EXCLUDED.notas,
-                      fecha_fuente    = NOW();
+        DO UPDATE SET tiempo_min=EXCLUDED.tiempo_min,
+                      fuente=COALESCE(EXCLUDED.fuente, tiempo_nominal.fuente),
+                      unidad_original=EXCLUDED.unidad_original,
+                      notas=EXCLUDED.notas,
+                      fecha_fuente=NOW();
     """), {
         "p": id_proceso,
         "m": id_maquina,
         "pr": id_producto,
         "tipo": tipo,
-        "t": str(data.tiempo_seg),   # ← ahora viene en segundos
+        "t": str(data.tiempo_seg),                 # ←SEGUNDOS
         "f": data.fuente,
-        "vo": data.valor_original,
         "uo": data.unidad_original,
         "n": data.notas
     })
@@ -767,37 +760,54 @@ function resetNominal(){
   document.getElementById('proceso').value = '';
   document.getElementById('maquina').innerHTML  = '<option value="">-- selecciona --</option>';
   document.getElementById('producto').innerHTML = '<option value="">-- selecciona --</option>';
-  document.getElementById('tipo').value = '';                      
-  document.getElementById('tiempo').value = '';
+  document.getElementById('tipo').value = '';
+  document.getElementById('tiempo').value = '';              // ← segundos
   document.getElementById('fuente').value = 'ficha_tecnica';
-  document.getElementById('valor').value = '';
   document.getElementById('unidad').value = '';
   document.getElementById('notas').value = '';
 }
 
 async function enviar(){
   const btn = event?.target || document.querySelector('button[onclick="enviar()"]');
-  if (btn?.disabled) return;
-  btn && (btn.disabled = true);
+  if (btn?.disabled) return; btn && (btn.disabled = true);
 
-  const body={
-    proceso:document.getElementById('proceso').value,
-    maquina:document.getElementById('maquina').value,
-    producto:document.getElementById('producto').value,
-    tipo:document.getElementById('tipo').value,                    
-    tiempo_min:document.getElementById('tiempo').value,
-    fuente:document.getElementById('fuente').value||'ficha_tecnica',
-    valor_original:document.getElementById('valor').value?Number(document.getElementById('valor').value):null,
-    unidad_original:document.getElementById('unidad').value||null,
-    notas:document.getElementById('notas').value||null
+  const proceso  = document.getElementById('proceso').value;
+  const maquina  = document.getElementById('maquina').value;
+  const producto = document.getElementById('producto').value;
+  const tipo     = document.getElementById('tipo').value;
+  const tiempo   = Number(document.getElementById('tiempo').value); // segundos
+
+  if (!proceso || !maquina || !producto){
+    document.getElementById('msg').textContent = '❌ Completa Proceso, Máquina y Producto.';
+    btn.disabled=false; return;
+  }
+  if (!tipo){
+    document.getElementById('msg').textContent = '❌ Selecciona el tipo de tiempo.';
+    btn.disabled=false; return;
+  }
+  if (!tiempo || tiempo <= 0){
+    document.getElementById('msg').textContent = '❌ Ingresa un tiempo válido en segundos.';
+    btn.disabled=false; return;
+  }
+
+  const body = {
+    proceso, maquina, producto, tipo,
+    tiempo_seg: Number(tiempo).toFixed(3),
+    fuente: document.getElementById('fuente').value || 'ficha_tecnica',
+    unidad_original: document.getElementById('unidad').value || null,
+    notas: document.getElementById('notas').value || null
   };
-  const r=await fetch('/tiempo-nominal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(r.ok){
-    document.getElementById('msg').textContent='✅ Guardado/Actualizado';
-    resetNominal();         // ← limpia todo
-    loadProcesos();         // ← refresca catálogo
-  }else{
-    document.getElementById('msg').textContent='❌ Error: '+(await r.text());
+
+  const r = await fetch('/tiempo-nominal', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+
+  if (r.ok){
+    document.getElementById('msg').textContent = '✅ Guardado/Actualizado';
+    resetNominal(); loadProcesos();
+  } else {
+    document.getElementById('msg').textContent = '❌ Error: ' + (await r.text());
   }
   btn && (btn.disabled = false);
 }
