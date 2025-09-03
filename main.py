@@ -176,7 +176,7 @@ def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get
           <td>{r['proceso']}</td>
           <td>{r['maquina']}</td>
           <td>{r['producto']}</td>
-          <td>{r[tipo_txt]}</td>
+          <td>{tipo_txt}</td>
           <td>{r['tiempo_min']}</td>
           <td>{r.get('operario') or ''}</td>
           <td>
