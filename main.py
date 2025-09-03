@@ -392,16 +392,15 @@ class MedicionReal(BaseModel):
     proceso: str
     maquina: str
     producto: str
-    tipo: str | None = "proceso"  # setup | proceso | postproceso | espera
-    tiempo_min: condecimal(max_digits=10, decimal_places=3)
+    tiempo_seg: condecimal(max_digits=10, decimal_places=3)  #segundos
     operario: str | None = None
 
 class TiempoNominal(BaseModel):
     proceso: str
     maquina: str
     producto: str
-    tipo: str | None = "proceso"
-    tiempo_min: condecimal(max_digits=10, decimal_places=3)
+    tipo: str                      # 'setup' | 'proceso' | 'postproceso' | 'espera'
+    tiempo_seg: condecimal(max_digits=10, decimal_places=3)  # en SEGUNDOS
     fuente: str | None = "ficha_tecnica"
     valor_original: float | None = None
     unidad_original: str | None = None
@@ -428,10 +427,10 @@ def crear_real(data: MedicionReal, db: Session = Depends(get_db)):
     tipo = norm_tipo(data.tipo)
 
     db.execute(text("""
-        INSERT INTO tiempo_real (id_proceso, id_maquina, id_producto, tipo, tiempo_min, operario)
-        VALUES (:p,:m,:pr,:tipo,:t,:op)
-    """), {"p": id_proceso, "m": id_maquina, "pr": id_producto,
-           "tipo": tipo, "t": str(data.tiempo_min), "op": data.operario})
+    INSERT INTO tiempo_real (id_proceso, id_maquina, id_producto, tiempo_min, operario, tipo)
+    VALUES (:p,:m,:pr,:t,:op,:tipo)
+"""), {"p": id_proceso, "m": id_maquina, "pr": id_producto,
+       "t": str(data.tiempo_seg), "op": data.operario, "tipo": data.tipo})
     db.commit()
     return {"ok": True}
 
@@ -444,30 +443,42 @@ def upsert_nominal(data: TiempoNominal, db: Session = Depends(get_db)):
     must(id_maquina is not None, "Máquina no existe")
     must(id_producto is not None, "Producto no existe")
 
-    pm = q1_one(db, "SELECT 1 FROM proceso_maquina WHERE id_proceso=:p AND id_maquina=:m",
-                {"p": id_proceso, "m": id_maquina})
+    pm = q1_one(db,
+        "SELECT 1 FROM proceso_maquina WHERE id_proceso=:p AND id_maquina=:m",
+        {"p": id_proceso, "m": id_maquina})
     must(bool(pm), "Esa máquina NO está asociada a ese proceso")
 
-    mp = q1_one(db, "SELECT 1 FROM maquina_producto WHERE id_maquina=:m AND id_producto=:pr",
-                {"m": id_maquina, "pr": id_producto})
+    mp = q1_one(db,
+        "SELECT 1 FROM maquina_producto WHERE id_maquina=:m AND id_producto=:pr",
+        {"m": id_maquina, "pr": id_producto})
     must(bool(mp), "Ese producto NO está asociado a esa máquina")
 
-    tipo = norm_tipo(data.tipo)
+    tipo = norm_tipo(data.tipo)  # setup / proceso / postproceso / espera
 
+    # IMPORTANTE: tiempo_min ahora almacena SEGUNDOS
     db.execute(text("""
         INSERT INTO tiempo_nominal
-          (id_proceso, id_maquina, id_producto, tipo, tiempo_min, fuente, valor_original, unidad_original, notas)
-        VALUES (:p,:m,:pr,:tipo,:t,:f,:vo,:uo,:n)
+          (id_proceso, id_maquina, id_producto, tipo, tiempo_min, fuente,
+           valor_original, unidad_original, notas)
+        VALUES (:p, :m, :pr, :tipo, :t, :f, :vo, :uo, :n)
         ON CONFLICT (id_maquina, id_producto, tipo)
-        DO UPDATE SET tiempo_min=EXCLUDED.tiempo_min,
-                      fuente=COALESCE(EXCLUDED.fuente, tiempo_nominal.fuente),
-                      valor_original=EXCLUDED.valor_original,
-                      unidad_original=EXCLUDED.unidad_original,
-                      notas=EXCLUDED.notas,
-                      fecha_fuente=NOW();
-    """), {"p": id_proceso, "m": id_maquina, "pr": id_producto, "tipo": tipo,
-           "t": str(data.tiempo_min), "f": data.fuente,
-           "vo": data.valor_original, "uo": data.unidad_original, "n": data.notas})
+        DO UPDATE SET tiempo_min      = EXCLUDED.tiempo_min,
+                      fuente          = COALESCE(EXCLUDED.fuente, tiempo_nominal.fuente),
+                      valor_original  = EXCLUDED.valor_original,
+                      unidad_original = EXCLUDED.unidad_original,
+                      notas           = EXCLUDED.notas,
+                      fecha_fuente    = NOW();
+    """), {
+        "p": id_proceso,
+        "m": id_maquina,
+        "pr": id_producto,
+        "tipo": tipo,
+        "t": str(data.tiempo_seg),   # ← ahora viene en segundos
+        "f": data.fuente,
+        "vo": data.valor_original,
+        "uo": data.unidad_original,
+        "n": data.notas
+    })
     db.commit()
     return {"ok": True}
 
@@ -495,21 +506,22 @@ def app_real():
 <select id="tipo">
   <option value="">-- selecciona --</option>
   <option value="setup">SetUp</option>
-  <option value="proceso">T_Proceso</option>
+  <option value="proceso">Proceso</option>
   <option value="postproceso">Post-proceso</option>
   <option value="espera">Espera</option>
 </select>
 
 <label>Modo de captura</label>
 <select id="modo">
+  <option value="">-- selecciona --</option>                      
   <option value="manual">Ingresar tiempo</option>
   <option value="cronometro">Tomar tiempo (cronómetro)</option>
 </select>
 
 <!-- Caja: entrada manual -->
 <div id="box-manual" style="margin-top:6px;">
-  <label>Tiempo (min)</label>
-  <input id="tiempo" type="number" step="0.001" placeholder="ej: 3.250" />
+  <label>Tiempo (segundos)</label>
+  <input id="tiempo" type="number" step="1" placeholder="ej: 180" />
 </div>
 
 <!-- Caja: cronómetro -->
@@ -612,7 +624,7 @@ function resetReal(){
   document.getElementById('maquina').innerHTML  = '<option value="">-- selecciona --</option>';
   document.getElementById('producto').innerHTML = '<option value="">-- selecciona --</option>';
   document.getElementById('tipo').value = '';
-  document.getElementById('modo').value = 'manual';
+  document.getElementById('modo').value = '';
   boxManual().style.display='block'; boxCrono().style.display='none';
   document.getElementById('tiempo').value = '';
   document.getElementById('operario').value = '';
@@ -694,7 +706,8 @@ def app_nominal():
   <option value="postproceso">Post-proceso</option>
   <option value="espera">Espera</option>
 </select>                        
-<label>Tiempo (min)</label><input id="tiempo" type="number" step="0.001" />
+<label>Tiempo (segundos)</label>
+<input id="tiempo" type="number" step="1" placeholder="ej: 180" />
 <label class="small">Metadatos (opcional)</label>
 <input id="fuente" placeholder="ficha_tecnica / manual / estimacion" />
 <input id="valor" type="number" step="0.0001" placeholder="valor original (ej 40.0000)" />
