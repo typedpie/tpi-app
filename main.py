@@ -220,7 +220,6 @@ def admin_list_nominal(request: Request, limit: int = 100, db: Session = Depends
               tn.id_tiempo_nominal,
               tn.tiempo_seg,
               tn.fuente,
-              tn.valor_original,
               tn.unidad_original,
               tn.notas,
               tn.tipo,  -- 👈 importante
