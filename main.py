@@ -155,12 +155,20 @@ def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get
       </p>
       <table border="1" cellpadding="6" cellspacing="0">
         <tr>
-          <th>ID</th><th>Fecha</th><th>Proceso</th><th>Máquina</th><th>Producto</th>
-          <th>ID</th><th>Fecha</th><th>Proceso</th><th>Máquina</th><th>Producto</th><th><b>Tipo</b></th><th>Tiempo (min)</th><th>Operario</th><th>Acciones</th>
-          <th>Tiempo (min)</th><th>Operario</th><th>Acciones</th>
-        </tr>
+      <th>ID</th>
+      <th>Fecha</th>
+      <th>Proceso</th>
+      <th>Máquina</th>
+      <th>Producto</th>
+      <th>Tipo</th>
+      <th>Tiempo (min)</th>
+      <th>Operario</th>
+      <th>Acciones</th>
+    </tr>
     """]
+    TIPO_LABEL = {"proceso":"T_Proceso","setup":"SetUp","postproceso":"Post-proceso","espera":"Espera"}
     for r in rows:
+        tipo_txt = TIPO_LABEL.get(r['tipo'], r['tipo'])
         html.append(f"""
         <tr>
           <td>{r['id_tiempo_real']}</td>
@@ -168,7 +176,7 @@ def admin_list_real(request: Request, limit: int = 50, db: Session = Depends(get
           <td>{r['proceso']}</td>
           <td>{r['maquina']}</td>
           <td>{r['producto']}</td>
-          <td>{r['tipo']}</td>
+          <td>{r[tipo_txt]}</td>
           <td>{r['tiempo_min']}</td>
           <td>{r.get('operario') or ''}</td>
           <td>
