@@ -392,6 +392,7 @@ class MedicionReal(BaseModel):
     proceso: str
     maquina: str
     producto: str
+    tipo: str 
     tiempo_seg: condecimal(max_digits=10, decimal_places=3)  #segundos
     operario: str | None = None
 
@@ -634,50 +635,71 @@ function resetReal(){
 // ------- enviar -------
 async function enviar(){
   const btn = event?.target || document.querySelector('button[onclick="enviar()"]');
-  if (btn?.disabled) return; btn && (btn.disabled = true);
+  if (btn?.disabled) return; 
+  btn && (btn.disabled = true);
 
-  // Validaciones básicas
+  // Lee valores
   const proceso  = document.getElementById('proceso').value;
   const maquina  = document.getElementById('maquina').value;
   const producto = document.getElementById('producto').value;
-  const tipo     = document.getElementById('tipo').value;
-  const modo     = document.getElementById('modo').value;
+  const tipo     = document.getElementById('tipo').value;     // setup | proceso | postproceso | espera
+  const modo     = document.getElementById('modo').value;     // manual | cronometro
 
-  if (!proceso || !maquina || !producto){ 
-    document.getElementById('msg').textContent='❌ Completa Proceso, Máquina y Producto.'; 
+  // Validaciones
+  if (!proceso || !maquina || !producto){
+    document.getElementById('msg').textContent='❌ Completa Proceso, Máquina y Producto.';
     btn.disabled=false; return;
   }
   if (!tipo){
-    document.getElementById('msg').textContent='❌ Selecciona el tipo de tiempo.'; 
+    document.getElementById('msg').textContent='❌ Selecciona el tipo de tiempo.';
+    btn.disabled=false; return;
+  }
+  if (!modo){
+    document.getElementById('msg').textContent='❌ Selecciona el modo de captura.';
     btn.disabled=false; return;
   }
 
-  let tiempoMin = null;
-  if (modo==='cronometro'){
-    const ms = crono.elapsed + (crono.running ? (Date.now()-crono.start) : 0);
-    if (ms<=0){ document.getElementById('msg').textContent='❌ El cronómetro está en 0.'; btn.disabled=false; return; }
-    tiempoMin = (ms/60000); // a minutos
-  }else{
+  // --- ahora trabajamos SIEMPRE en SEGUNDOS ---
+  let seg = null;
+
+  if (modo === 'cronometro') {
+    // ms acumulados (si está corriendo, sumo desde el último start)
+    const ms = crono.elapsed + (crono.running ? (Date.now() - crono.start) : 0);
+    if (ms <= 0) {
+      document.getElementById('msg').textContent = '❌ El cronómetro está en 0.';
+      btn.disabled=false; return;
+    }
+    seg = ms / 1000;                              // ← a segundos
+  } else { // manual
     const v = Number(document.getElementById('tiempo').value);
-    if (!v || v<=0){ document.getElementById('msg').textContent='❌ Ingresa un tiempo válido en minutos.'; btn.disabled=false; return; }
-    tiempoMin = v;
+    if (!v || v <= 0){
+      document.getElementById('msg').textContent='❌ Ingresa un tiempo válido en segundos.';
+      btn.disabled=false; return;
+    }
+    seg = v;                                      // ya viene en segundos
   }
 
-  const body={
-    proceso: proceso,
-    maquina: maquina,
-    producto: producto,
-    tiempo_min: Number(tiempoMin).toFixed(3),   // 3 decimales
-    operario: document.getElementById('operario').value || null,
-    tipo: tipo
+  const body = {
+    proceso,
+    maquina,
+    producto,
+    tipo,
+    tiempo_seg: Number(seg).toFixed(3),           // ← en segundos
+    operario: document.getElementById('operario').value || null
   };
 
-  const r=await fetch('/tiempo-real',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(r.ok){
-    document.getElementById('msg').textContent='✅ Guardado';
-    resetReal(); loadProcesos();
-  }else{
-    document.getElementById('msg').textContent='❌ Error: '+(await r.text());
+  const r = await fetch('/tiempo-real', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+
+  if (r.ok){
+    document.getElementById('msg').textContent = '✅ Guardado';
+    resetReal(); 
+    loadProcesos();
+  } else {
+    document.getElementById('msg').textContent = '❌ Error: ' + (await r.text());
   }
   btn && (btn.disabled = false);
 }
