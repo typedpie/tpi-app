@@ -529,7 +529,7 @@ def app_real():
   <p id="crono-msg" class="small"></p>
 </div>
 
-<label>Operario (opcional)</label><input id="operario" type="text" />
+<label>Cantidad Operarios (opcional)</label><input id="operario" type="text" />
 
 <button onclick="enviar()">Guardar</button>
 <p id="msg" class="small"></p>
