@@ -369,6 +369,12 @@ def home():
                     Registrar tiempo REAL
                 </button>
             </a>
+            <a href="/app/experiencia">
+                <button style="padding: 10px 20px; margin: 10px; font-size: 16px;">
+                    Registrar tiempo EXPERIENCIA
+                </button>
+            </a>
+            
             <a href="/app/nominal">
                 <button style="padding: 10px 20px; margin: 10px; font-size: 16px;">
                     Registrar tiempo NOMINAL
@@ -403,6 +409,15 @@ class TiempoNominal(BaseModel):
     tiempo_seg: condecimal(max_digits=10, decimal_places=3)
     fuente: str | None = "ficha_tecnica"
     unidad_original: str | None = None
+    notas: str | None = None
+
+class TiempoExperiencia(BaseModel):
+    proceso: str
+    maquina: str
+    producto: str
+    tipo: str                                # 'setup' | 'proceso' | 'postproceso' | 'espera'
+    tiempo_seg: condecimal(max_digits=10, decimal_places=3)  # segundos
+    operario: str | None = None
     notas: str | None = None
 
 # -------- Escrituras --------
@@ -470,6 +485,43 @@ def upsert_nominal(data: TiempoNominal, db: Session = Depends(get_db)):
         "t_seg": str(data.tiempo_seg),                 # ←SEGUNDOS
         "f": data.fuente,
         "uo": data.unidad_original,
+        "n": data.notas
+    })
+    db.commit()
+    return {"ok": True}
+
+@app.post("/tiempo-experiencia")
+def crear_experiencia(data: TiempoExperiencia, db: Session = Depends(get_db)):
+    # IDs por nombre (tus tablas usan id_proceso/id_maquina/id_producto)
+    id_proceso  = id_by_name(db, "proceso", data.proceso)
+    id_maquina  = id_by_name(db, "maquina", data.maquina)
+    id_producto = id_by_name(db, "producto", data.producto)
+    must(id_proceso is not None, "Proceso no existe")
+    must(id_maquina is not None, "Máquina no existe")
+    must(id_producto is not None, "Producto no existe")
+
+    # Validar asociaciones (sigues usando 'proceso_maquina' y 'maquina_producto')
+    pm = q1_one(db, "SELECT 1 FROM proceso_maquina WHERE id_proceso=:p AND id_maquina=:m",
+                {"p": id_proceso, "m": id_maquina})
+    must(bool(pm), "Esa máquina NO está asociada a ese proceso")
+
+    mp = q1_one(db, "SELECT 1 FROM maquina_producto WHERE id_maquina=:m AND id_producto=:pr",
+                {"m": id_maquina, "pr": id_producto})
+    must(bool(mp), "Ese producto NO está asociado a esa máquina")
+
+    tipo = norm_tipo(data.tipo)
+
+    db.execute(text("""
+        INSERT INTO tiempo_experiencia
+          (id_proceso, id_maquina, id_producto, tipo, tiempo_seg, operario, notas)
+        VALUES (:p,:m,:pr,:tipo,:t_seg,:op,:n)
+    """), {
+        "p": id_proceso,
+        "m": id_maquina,
+        "pr": id_producto,
+        "tipo": tipo,
+        "t_seg": str(data.tiempo_seg),   # segundos
+        "op": data.operario,
         "n": data.notas
     })
     db.commit()
@@ -807,6 +859,96 @@ async function enviar(){
   btn && (btn.disabled = false);
 }
 
+document.getElementById('proceso').addEventListener('change',loadMaquinas);
+document.getElementById('maquina').addEventListener('change',loadProductos);
+loadProcesos();
+</script>
+""")
+
+@app.get("/app/experiencia", response_class=HTMLResponse)
+def app_experiencia():
+    return HTMLResponse(FORM_STYLE + """
+<h2>Registrar tiempo por EXPERIENCIA (operario)</h2>
+
+<label>Proceso</label><select id="proceso"></select>
+<label>Máquina</label><select id="maquina"></select>
+<label>Producto</label><select id="producto"></select>
+
+<label>Tipo de tiempo</label>
+<select id="tipo">
+  <option value="">-- selecciona --</option>
+  <option value="setup">SetUp</option>
+  <option value="proceso">Proceso</option>
+  <option value="postproceso">Post-proceso</option>
+  <option value="espera">Espera</option>
+</select>
+
+<label>Tiempo (segundos)</label>
+<input id="tiempo_seg" type="number" step="1" placeholder="ej: 180" />
+
+<label>Bitácora / Notas (opcional)</label>
+<textarea id="notas" placeholder="Observaciones del operario, condiciones, supuestos…"></textarea>
+
+<label>Operario (opcional)</label>
+<input id="operario" placeholder="Nombre o iniciales" />
+
+<button onclick="enviar()">Guardar</button>
+<p id="msg" class="small"></p>
+
+<a href="/"><button style="margin-top:20px; padding:8px 16px;">⬅ Volver al inicio</button></a>
+
+<script>
+async function loadProcesos(){
+  const r=await fetch('/options/procesos'); const d=await r.json();
+  const s=document.getElementById('proceso'); s.innerHTML='<option value="">-- selecciona --</option>';
+  d.forEach(x=>s.innerHTML+=`<option>${x}</option>`);
+}
+async function loadMaquinas(){
+  const p=document.getElementById('proceso').value;
+  const r=await fetch('/options/maquinas?proceso='+encodeURIComponent(p)); const d=await r.json();
+  const s=document.getElementById('maquina'); s.innerHTML='<option value="">-- selecciona --</option>';
+  d.forEach(x=>s.innerHTML+=`<option>${x}</option>`);
+  document.getElementById('producto').innerHTML='<option value="">-- selecciona --</option>';
+}
+async function loadProductos(){
+  const m=document.getElementById('maquina').value;
+  const r=await fetch('/options/productos?maquina='+encodeURIComponent(m)); const d=await r.json();
+  const s=document.getElementById('producto'); s.innerHTML='<option value="">-- selecciona --</option>';
+  d.forEach(x=>s.innerHTML+=`<option>${x}</option>`);
+}
+function resetForm(){
+  document.getElementById('proceso').value='';
+  document.getElementById('maquina').innerHTML='<option value="">-- selecciona --</option>';
+  document.getElementById('producto').innerHTML='<option value="">-- selecciona --</option>';
+  document.getElementById('tipo').value='';
+  document.getElementById('tiempo_seg').value='';
+  document.getElementById('notas').value='';
+  document.getElementById('operario').value='';
+}
+async function enviar(){
+  const btn = event?.target; if(btn) btn.disabled=true;
+  const proceso  = document.getElementById('proceso').value;
+  const maquina  = document.getElementById('maquina').value;
+  const producto = document.getElementById('producto').value;
+  const tipo     = document.getElementById('tipo').value;
+  const tseg     = Number(document.getElementById('tiempo_seg').value);
+  if(!proceso || !maquina || !producto || !tipo){
+    document.getElementById('msg').textContent='❌ Completa Proceso, Máquina, Producto y Tipo.'; if(btn) btn.disabled=false; return;
+  }
+  if(!tseg || tseg<=0){
+    document.getElementById('msg').textContent='❌ Ingresa un tiempo válido en segundos.'; if(btn) btn.disabled=false; return;
+  }
+  const body = {
+    proceso, maquina, producto, tipo,
+    tiempo_seg: Number(tseg).toFixed(3),
+    operario: document.getElementById('operario').value || null,
+    notas: document.getElementById('notas').value || null
+  };
+  const r = await fetch('/tiempo-experiencia', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  if(r.ok){ document.getElementById('msg').textContent='✅ Guardado'; resetForm(); loadProcesos(); }
+  else    { document.getElementById('msg').textContent='❌ Error: '+(await r.text()); }
+  if(btn) btn.disabled=false;
+}
 document.getElementById('proceso').addEventListener('change',loadMaquinas);
 document.getElementById('maquina').addEventListener('change',loadProductos);
 loadProcesos();
