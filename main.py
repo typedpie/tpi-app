@@ -374,7 +374,7 @@ def home():
                     Registrar tiempo EXPERIENCIA
                 </button>
             </a>
-            
+
             <a href="/app/nominal">
                 <button style="padding: 10px 20px; margin: 10px; font-size: 16px;">
                     Registrar tiempo NOMINAL
@@ -889,7 +889,7 @@ def app_experiencia():
 <label>Bitácora / Notas (opcional)</label>
 <textarea id="notas" placeholder="Observaciones del operario, condiciones, supuestos…"></textarea>
 
-<label>Operario (opcional)</label>
+<label>Numero de operarios</label>
 <input id="operario" placeholder="Nombre o iniciales" />
 
 <button onclick="enviar()">Guardar</button>
