@@ -111,6 +111,7 @@ def admin_home(request: Request):
         <ul>
           <li><a href="/admin/real">Ver y eliminar <b>tiempos REALES</b></a></li>
           <li><a href="/admin/nominal">Ver y eliminar <b>tiempos NOMINALES</b></a></li>
+          <li><a href="/admin/experiencia">Ver y eliminar <b>tiempos EXPERIENCIA</b></a></li>
         </ul>
         <p style="margin-top:16px;">
           <a href="/">⬅ Volver al inicio (no admin)</a> |
@@ -312,6 +313,99 @@ def admin_delete_nominal(id_tiempo_nominal: int, request: Request, db: Session =
       <html><body style="font-family: system-ui; padding: 16px;">
         <p>Nominal eliminado.</p>
         <p><a href="/admin/nominal">⬅ Volver a la lista</a></p>
+      </body></html>
+    """)
+@app.get("/admin/experiencia", response_class=HTMLResponse)
+def admin_list_experiencia(request: Request, limit: int = 100, db: Session = Depends(get_db)):
+    check_admin_token(request)
+    rows = q1(db, """
+        SELECT
+          te.id_tiempo_experiencia,
+          to_char(te.fecha AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI') AS fecha,
+          te.tiempo_seg,
+          te.operario,
+          te.tipo,
+          te.notas,
+          p.nombre  AS proceso,
+          m.nombre  AS maquina,
+          pr.nombre AS producto
+        FROM tiempo_experiencia te
+        JOIN proceso  p  ON p.id_proceso  = te.id_proceso
+        JOIN maquina  m  ON m.id_maquina  = te.id_maquina
+        JOIN producto pr ON pr.id_producto = te.id_producto
+        ORDER BY te.fecha DESC
+        LIMIT :lim
+    """, {"lim": limit})
+
+    html = ["""
+    <html><head><title>Admin EXPERIENCIA</title></head>
+    <body style="font-family: system-ui; padding: 16px; max-width: 1200px; margin: auto;">
+      <h2>📝 Tiempos por EXPERIENCIA</h2>
+      <p>
+        <a href="/admin">⬅ Volver al panel</a> |
+        <a href="/">⬅ Volver al inicio (no admin)</a> |
+        <a href="/admin/logout">🚪 Salir del modo admin</a>
+      </p>
+      <table border="1" cellpadding="6" cellspacing="0">
+        <tr>
+          <th>ID</th>
+          <th>Fecha</th>
+          <th>Proceso</th>
+          <th>Máquina</th>
+          <th>Producto</th>
+          <th>Tipo</th>
+          <th>Segundos</th>
+          <th>Operario</th>
+          <th>Notas</th>
+          <th>Acciones</th>
+        </tr>
+    """]
+    TIPO_LABEL = {"proceso":"T_Proceso","setup":"SetUp","postproceso":"Post-proceso","espera":"Espera"}
+    for r in rows:
+        notas = (r.get('notas') or '')
+        notas_corta = (notas[:60] + '…') if len(notas) > 60 else notas
+        tipo_txt = TIPO_LABEL.get(r.get('tipo'), r.get('tipo') or '—')
+        html.append(f"""
+        <tr>
+          <td>{r['id_tiempo_experiencia']}</td>
+          <td>{r['fecha']}</td>
+          <td>{r['proceso']}</td>
+          <td>{r['maquina']}</td>
+          <td>{r['producto']}</td>
+          <td>{tipo_txt}</td>
+          <td>{r['tiempo_seg']}</td>
+          <td>{r.get('operario') or ''}</td>
+          <td>{notas_corta}</td>
+          <td>
+            <form method="post" action="/admin/experiencia/delete/{r['id_tiempo_experiencia']}"
+                  onsubmit="return confirm('¿Eliminar EXPERIENCIA #{r['id_tiempo_experiencia']}?');">
+              <button type="submit">❌ Eliminar</button>
+            </form>
+          </td>
+        </tr>
+        """)
+    html.append("""
+      </table>
+      <p style="margin-top:10px;">Mostrando últimos registros por experiencia.</p>
+      <p>
+        <a href="/admin">⬅ Volver al panel</a> |
+        <a href="/">⬅ Volver al inicio (no admin)</a>
+      </p>
+    </body></html>
+    """)
+    return HTMLResponse("".join(html))
+
+
+@app.post("/admin/experiencia/delete/{id_tiempo_experiencia}")
+def admin_delete_experiencia(id_tiempo_experiencia: int, request: Request, db: Session = Depends(get_db)):
+    check_admin_token(request)
+    db.execute(text("DELETE FROM tiempo_experiencia WHERE id_tiempo_experiencia = :id"),
+               {"id": id_tiempo_experiencia})
+    db.commit()
+    return HTMLResponse("""
+      <html><body style="font-family: system-ui; padding: 16px;">
+        <p>Registro de EXPERIENCIA eliminado.</p>
+        <p><a href="/admin/experiencia">⬅ Volver a la lista</a></p>
       </body></html>
     """)
 
