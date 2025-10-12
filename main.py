@@ -481,6 +481,11 @@ def home():
                   </button>
               </a>
             </div>
+            <a href="/app/analisis">
+                <button style="padding: 10px 20px; margin: 10px; font-size: 16px;">
+                    Analizar datos (real)
+                </button>
+            </a>
         </body>
     </html>
     """
@@ -1050,4 +1055,5 @@ loadProcesos();
 """)
 #--------------------------------
 
-
+from analysis_routes import router as analysis_router
+app.include_router(analysis_router)
