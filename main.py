@@ -1055,5 +1055,5 @@ loadProcesos();
 """)
 #--------------------------------
 
-from analysis_routes import router as analysis_router
+from Analisis_routes import router as analysis_router
 app.include_router(analysis_router)
