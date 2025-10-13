@@ -67,6 +67,8 @@ def resumen_estadistico(x: np.ndarray) -> dict:
     q1, med, q3 = (np.percentile(x, [25, 50, 75]) if n else (np.nan, np.nan, np.nan))
     iqr = (q3 - q1) if n else np.nan
     cv  = (std/mean*100) if (n and mean) else np.nan
+    skew = stats.skew(x, bias=False) if n > 2 else np.nan
+    kurt = stats.kurtosis(x, fisher=False, bias=False) if n > 3 else np.nan
     if n > 1:
         tcrit = stats.t.ppf(0.975, df=n-1)
         ci_low  = mean - tcrit * std / np.sqrt(n)
@@ -78,7 +80,9 @@ def resumen_estadistico(x: np.ndarray) -> dict:
         "min": float(np.min(x)) if n else np.nan,
         "q1": float(q1), "median": float(med), "q3": float(q3),
         "max": float(np.max(x)) if n else np.nan,
-        "iqr": float(iqr), "ci95_low": float(ci_low), "ci95_high": float(ci_high)
+        "iqr": float(iqr), "ci95_low": float(ci_low), "ci95_high": float(ci_high),
+        "skewness": float(skew) if n > 2 else np.nan,
+        "kurtosis": float(kurt) if n > 3 else np.nan
     }
 
 def pruebas_ajuste(x: np.ndarray) -> list[dict]:
@@ -126,6 +130,12 @@ def graficos_base64(x: np.ndarray, titulo: str) -> tuple[str,str]:
     else:
         b64_qq = ""
     return b64_hist, b64_qq
+
+def boxplot_base64(x: np.ndarray, titulo: str) -> str:
+    fig = plt.figure(figsize=(4,5))
+    plt.boxplot(x, vert=True, patch_artist=True)
+    plt.title(f"{titulo} – Boxplot"); plt.ylabel("Tiempo (s)")
+    return _fig_to_b64(fig)
 
 # -------- UI simple para lanzar análisis --------
 @router.get("/app/analisis", response_class=HTMLResponse)
@@ -203,6 +213,7 @@ def analizar(proceso: str, maquina: str, tipo: str, producto: str | None = None,
     outs = df.loc[(df["tiempo_seg"]<lo)|(df["tiempo_seg"]>hi), ["fecha","producto","tiempo_seg"]]
     titulo = f"{maquina} – {tipo}"
     b64_hist, b64_qq = graficos_base64(x, titulo)
+    b64_box = boxplot_base64(x, titulo)
 
     def fmt(v): 
         return "—" if v is None or (isinstance(v,float) and np.isnan(v)) else (f"{v:.3f}" if isinstance(v,float) else v)
@@ -232,6 +243,7 @@ def analizar(proceso: str, maquina: str, tipo: str, producto: str | None = None,
       <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:18px;">
         <div><img src="{b64_hist}" style="max-width:560px; border:1px solid #ddd"/></div>
         {f'<div><img src="{b64_qq}" style="max-width:420px; border:1px solid #ddd"/></div>' if b64_qq else ''}
+        <div><img src="{b64_box}" style="max-width:360px; border:1px solid #ddd"/></div>
       </div>
 
       <h3 style="margin-top:18px;">Posibles atípicos (IQR)</h3>

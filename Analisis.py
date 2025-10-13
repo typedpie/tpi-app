@@ -49,6 +49,10 @@ def resumen_estadistico(x: np.ndarray) -> dict:
     q1, median, q3 = np.percentile(x, [25, 50, 75])
     iqr = q3 - q1
     cv = (std / mean * 100) if mean else np.nan
+    ##########################################
+    skew = stats.skew(x, bias=False) if n > 2 else np.nan
+    kurt = stats.kurtosis(x, fisher=False, bias=False) if n > 3 else np.nan  # kurtosis de Pearson (Normal=3)
+    ##########################################
     if n > 1:
         tcrit = stats.t.ppf(0.975, df=n - 1)
         ci_low = mean - tcrit * std / np.sqrt(n)
@@ -59,7 +63,9 @@ def resumen_estadistico(x: np.ndarray) -> dict:
         "n": n,
         "mean": mean, "std": std, "cv%": cv,
         "min": x.min(), "q1": q1, "median": median, "q3": q3, "max": x.max(),
-        "iqr": iqr, "ci95_low": ci_low, "ci95_high": ci_high
+        "iqr": iqr, "ci95_low": ci_low, "ci95_high": ci_high,
+        "skewness": skew,
+        "kurtosis": kurt
     }
 
 
@@ -126,6 +132,15 @@ def graficos(x: np.ndarray, titulo_base: str, outdir: Path):
         plt.tight_layout()
         plt.savefig(outdir / "qqplot.png", dpi=150)
         plt.close()
+
+    # Boxplot
+    plt.figure(figsize=(4, 5))
+    plt.boxplot(x, vert=True, patch_artist=True)
+    plt.title(f"{titulo_base} – Boxplot")
+    plt.ylabel("Tiempo (s)")
+    plt.tight_layout()
+    plt.savefig(outdir / "boxplot.png", dpi=150)
+    plt.close()    
 
 
 def main():
