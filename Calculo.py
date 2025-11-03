@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 import math
 
+
 router = APIRouter(tags=["calculo"])
 
 FORM_STYLE = """
@@ -73,4 +74,4 @@ function calcular(){
   res.style.display='block';
 }
 </script>
-"""))
+""")
