@@ -486,6 +486,11 @@ def home():
                     Analizar datos (real)
                 </button>
             </a>
+            <a href="/app/calculo">
+                <button style="padding: 10px 20px; margin: 10px; font-size: 16px;">
+                    Calcular producción (paneles compuestos)
+                </button>
+            </a>
         </body>
     </html>
     """
@@ -1057,3 +1062,6 @@ loadProcesos();
 
 from Analisis_routes import router as analysis_router
 app.include_router(analysis_router)
+
+from Calculo import router as calculo_router
+app.include_router(calculo_router)
