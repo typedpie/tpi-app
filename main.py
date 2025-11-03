@@ -1063,5 +1063,5 @@ loadProcesos();
 from Analisis_routes import router as analysis_router
 app.include_router(analysis_router)
 
-from Calculo import router as calculo_router
+from calculo import router as calculo_router
 app.include_router(calculo_router)
