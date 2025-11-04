@@ -26,7 +26,8 @@ def app_calculo():
 
 <p class="small">
 Ingresa una o varias medidas de panel. El modelo asume que el horno trabaja por lotes:
-primero procesa todos los paneles de una medida, luego los de la siguiente, y así sucesivamente.
+primero procesa todos los paneles de una medida, luego los de la siguiente.
+Además se calcula automáticamente qué tanto se aprovecha el área del horno en cada caso.
 </p>
 
 <h3>Medidas del pedido</h3>
@@ -40,7 +41,7 @@ primero procesa todos los paneles de una medida, luego los de la siguiente, y as
     </tr>
   </thead>
   <tbody id="tbody-medidas">
-    <!-- filas se agregan por JS -->
+    <!-- filas por JS -->
   </tbody>
 </table>
 <button type="button" class="small-btn" onclick="addRow()">➕ Agregar medida</button>
@@ -48,9 +49,6 @@ primero procesa todos los paneles de una medida, luego los de la siguiente, y as
 <h3>Parámetros del horno</h3>
 <label>Horas efectivas de trabajo del horno (por día)</label>
 <input id="horas" type="number" step="0.1" placeholder="ej: 8" />
-
-<label>Eficiencia global del sistema (%)</label>
-<input id="eficiencia" type="number" step="1" placeholder="ej: 85 (si lo dejas vacío asumo 100)" />
 
 <button onclick="calcular()">Calcular</button>
 <p id="msg" class="small"></p>
@@ -79,7 +77,7 @@ function removeRow(btn){
   tr && tr.remove();
 }
 
-// agrega una fila inicial por defecto
+// fila inicial
 addRow();
 
 // --- cálculo principal ---
@@ -102,23 +100,15 @@ function calcular(){
     return;
   }
 
-  let e_raw = document.getElementById('eficiencia').value;
-  let e = e_raw ? parseFloat(e_raw) : 100;
-  if(isNaN(e) || e <= 0 || e > 100){
-    msg.textContent = '⚠️ La eficiencia debe estar entre 1 y 100 (%).';
-    return;
-  }
-
   // constantes del horno
   const ANCHO_PRENSA = 1300;
   const LARGO_PRENSA = 6200;
+  const AREA_PRENSA = ANCHO_PRENSA * LARGO_PRENSA;
   const T_CICLO = 10; // minutos por ciclo
   const ciclos_por_dia = (h * 60) / T_CICLO;
-  const factor = e / 100.0;
 
   let detalle = [];
-  let total_teor = 0;
-  let total_efec = 0;
+  let total_dias = 0;
 
   for(const row of rows){
     const a = parseFloat(row.querySelector('.ancho').value);
@@ -139,24 +129,23 @@ function calcular(){
       return;
     }
 
-    const paneles_dia_teor = n_paneles * ciclos_por_dia;
-    const paneles_dia_efec = paneles_dia_teor * factor;
+    // capacidad diaria (solo horno)
+    const paneles_dia = n_paneles * ciclos_por_dia;
+    const dias = q / paneles_dia;
+    total_dias += dias;
 
-    const dias_teor = q / paneles_dia_teor;
-    const dias_efec = q / paneles_dia_efec;
-
-    total_teor += dias_teor;
-    total_efec += dias_efec;
+    // eficiencia de uso de área (aprovechamiento)
+    const area_usada = n_paneles * a * l;
+    const eficiencia_area = area_usada / AREA_PRENSA * 100; // %
 
     detalle.push({
       ancho: a,
       largo: l,
       cantidad: q,
       por_ciclo: n_paneles,
-      prod_teor: paneles_dia_teor,
-      prod_efec: paneles_dia_efec,
-      dias_teor: dias_teor,
-      dias_efec: dias_efec
+      prod_dia: paneles_dia,
+      dias: dias,
+      eff_area: eficiencia_area
     });
   }
 
@@ -169,10 +158,9 @@ function calcular(){
           <th>Medida (mm)</th>
           <th>Cant.</th>
           <th>Paneles/ciclo</th>
-          <th>Prod. diaria teórica</th>
-          <th>Prod. diaria efectiva (${e.toFixed(1)}%)</th>
-          <th>Días teóricos</th>
-          <th>Días efectivos</th>
+          <th>Aprovechamiento horno (%)</th>
+          <th>Prod. diaria (paneles/día)</th>
+          <th>Días necesarios</th>
         </tr>
       </thead>
       <tbody>
@@ -184,10 +172,9 @@ function calcular(){
         <td>${d.ancho} × ${d.largo}</td>
         <td>${d.cantidad}</td>
         <td>${d.por_ciclo}</td>
-        <td>${d.prod_teor.toFixed(1)}</td>
-        <td>${d.prod_efec.toFixed(1)}</td>
-        <td>${d.dias_teor.toFixed(2)}</td>
-        <td>${d.dias_efec.toFixed(2)}</td>
+        <td>${d.eff_area.toFixed(1)}%</td>
+        <td>${d.prod_dia.toFixed(1)}</td>
+        <td>${d.dias.toFixed(2)}</td>
       </tr>
     `;
   }
@@ -197,9 +184,12 @@ function calcular(){
     </table>
     <hr>
     <h3>⏱️ Resumen del pedido completo</h3>
-    <p><b>Días totales (teórico 100%):</b> ${total_teor.toFixed(2)} días (~${Math.ceil(total_teor)} días calendario)</p>
-    <p><b>Días totales (con eficiencia ${e.toFixed(1)}%):</b> ${total_efec.toFixed(2)} días (~${Math.ceil(total_efec)} días calendario)</p>
-    <p class="small">Supuestos: horno trabaja por lotes homogéneos (una medida a la vez), ciclo fijo de ${T_CICLO} min, prensa 1300×6200 mm, eficiencia aplica a paradas, setups, etc.</p>
+    <p><b>Días totales estimados (solo cuello de botella horno):</b> ${total_dias.toFixed(2)} días (~${Math.ceil(total_dias)} días calendario)</p>
+    <p class="small">
+      Supuestos: horno trabaja por lotes homogéneos (una medida a la vez), ciclo fijo de ${T_CICLO} min,
+      prensa de ${ANCHO_PRENSA}×${LARGO_PRENSA} mm. La columna "Aprovechamiento horno (%)" muestra
+      qué porcentaje del área de la prensa se está usando en cada ciclo con esa medida.
+    </p>
   `;
 
   res.innerHTML = html;
