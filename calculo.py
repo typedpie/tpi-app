@@ -1,3 +1,4 @@
+# calculo.py
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
@@ -5,7 +6,7 @@ router = APIRouter(tags=["calculo"])
 
 FORM_STYLE = """
 <style>
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto;padding:14px;max-width:800px;margin:auto}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto;padding:14px;max-width:900px;margin:auto}
 label{display:block;margin-top:12px;font-weight:600}
 input,button{padding:8px 10px;border-radius:8px;border:1px solid #ddd;font-size:15px}
 input{width:100%;}
@@ -27,7 +28,14 @@ def app_calculo():
 <p class="small">
 Ingresa una o varias medidas de panel. El modelo asume que el horno trabaja por lotes:
 primero procesa todos los paneles de una medida, luego los de la siguiente.
-Además se calcula automáticamente qué tanto se aprovecha el área del horno en cada caso.
+Se calcula:
+<ul>
+  <li>Capacidad del horno (paneles/ciclo, paneles/día y días del pedido)</li>
+  <li>Aprovechamiento del área del horno (%)</li>
+  <li><b>Tiempo por panel</b> = tiempo horno/panel + tiempo de armado/panel (estimado)</li>
+</ul>
+Para el <b>armado</b> se toma como referencia 215,4 s para un panel de 345×2000 mm, y se escala linealmente
+según el área del panel.
 </p>
 
 <h3>Medidas del pedido</h3>
@@ -104,11 +112,20 @@ function calcular(){
   const ANCHO_PRENSA = 1300;
   const LARGO_PRENSA = 6200;
   const AREA_PRENSA = ANCHO_PRENSA * LARGO_PRENSA;
-  const T_CICLO = 10; // minutos por ciclo
-  const ciclos_por_dia = (h * 60) / T_CICLO;
+  const T_CICLO_MIN = 10;          // minutos por ciclo
+  const T_CICLO_SEG = T_CICLO_MIN * 60;
+  const ciclos_por_dia = (h * 60) / T_CICLO_MIN;
+
+  // referencia para armado
+  const ANCHO_BASE = 345;
+  const LARGO_BASE = 2000;
+  const AREA_BASE = ANCHO_BASE * LARGO_BASE;   // mm2
+  const T_ARMADO_BASE = 215.4;                 // segundos por panel base
 
   let detalle = [];
   let total_dias = 0;
+  let total_paneles = 0;
+  let total_seg_trabajo = 0;   // suma (tiempo_total_por_panel * cantidad)
 
   for(const row of rows){
     const a = parseFloat(row.querySelector('.ancho').value);
@@ -135,8 +152,18 @@ function calcular(){
     total_dias += dias;
 
     // eficiencia de uso de área (aprovechamiento)
-    const area_usada = n_paneles * a * l;
+    const area_panel = a * l;                         // mm2
+    const area_usada = n_paneles * area_panel;
     const eficiencia_area = area_usada / AREA_PRENSA * 100; // %
+
+    // tiempos por panel (segundos)
+    const t_horno_panel = T_CICLO_SEG / n_paneles;           // horno
+    const factor_area = area_panel / AREA_BASE;              // escala vs panel base
+    const t_armado_panel = T_ARMADO_BASE * factor_area;      // armado estimado
+    const t_total_panel = t_horno_panel + t_armado_panel;    // taller por panel
+
+    total_paneles += q;
+    total_seg_trabajo += t_total_panel * q;
 
     detalle.push({
       ancho: a,
@@ -145,9 +172,14 @@ function calcular(){
       por_ciclo: n_paneles,
       prod_dia: paneles_dia,
       dias: dias,
-      eff_area: eficiencia_area
+      eff_area: eficiencia_area,
+      t_horno_min: t_horno_panel / 60.0,
+      t_armado_min: t_armado_panel / 60.0,
+      t_total_min: t_total_panel / 60.0
     });
   }
+
+  const tiempo_promedio_panel_min = total_seg_trabajo / total_paneles / 60.0;
 
   // construir HTML de resultados
   let html = `
@@ -160,7 +192,10 @@ function calcular(){
           <th>Paneles/ciclo</th>
           <th>Aprovechamiento horno (%)</th>
           <th>Prod. diaria (paneles/día)</th>
-          <th>Días necesarios</th>
+          <th>Días (horno)</th>
+          <th>Horno/panel (min)</th>
+          <th>Armado/panel (min, estimado)</th>
+          <th>Total/panel (min)</th>
         </tr>
       </thead>
       <tbody>
@@ -175,6 +210,9 @@ function calcular(){
         <td>${d.eff_area.toFixed(1)}%</td>
         <td>${d.prod_dia.toFixed(1)}</td>
         <td>${d.dias.toFixed(2)}</td>
+        <td>${d.t_horno_min.toFixed(2)}</td>
+        <td>${d.t_armado_min.toFixed(2)}</td>
+        <td>${d.t_total_min.toFixed(2)}</td>
       </tr>
     `;
   }
@@ -184,11 +222,12 @@ function calcular(){
     </table>
     <hr>
     <h3>⏱️ Resumen del pedido completo</h3>
-    <p><b>Días totales estimados (solo cuello de botella horno):</b> ${total_dias.toFixed(2)} días (~${Math.ceil(total_dias)} días calendario)</p>
+    <p><b>Días totales estimados (por cuello de botella horno):</b> ${total_dias.toFixed(2)} días (~${Math.ceil(total_dias)} días calendario)</p>
+    <p><b>Tiempo promedio de trabajo por panel (horno + armado):</b> ${tiempo_promedio_panel_min.toFixed(2)} min/panel</p>
     <p class="small">
-      Supuestos: horno trabaja por lotes homogéneos (una medida a la vez), ciclo fijo de ${T_CICLO} min,
-      prensa de ${ANCHO_PRENSA}×${LARGO_PRENSA} mm. La columna "Aprovechamiento horno (%)" muestra
-      qué porcentaje del área de la prensa se está usando en cada ciclo con esa medida.
+      Supuestos: horno trabaja por lotes homogéneos (una medida a la vez), ciclo fijo de 10 min,
+      prensa de 1300×6200 mm. El tiempo de armado se escala linealmente con el área del panel,
+      usando como referencia 215,4 s para un panel de 345×2000 mm.
     </p>
   `;
 
@@ -197,3 +236,4 @@ function calcular(){
 }
 </script>
 """)
+
