@@ -6,23 +6,305 @@ router = APIRouter(tags=["calculo"])
 
 FORM_STYLE = """
 <style>
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto;padding:14px;max-width:900px;margin:auto}
-label{display:block;margin-top:12px;font-weight:600}
-input,button{padding:8px 10px;border-radius:8px;border:1px solid #ddd;font-size:15px}
-input{width:100%;}
-button{background:#111;color:#fff;border:none;cursor:pointer}
-button.small-btn{width:auto;padding:6px 10px;font-size:13px;margin-left:6px;}
-.small{font-size:13px;color:#666}
-.result{margin-top:20px;padding:14px;border-radius:8px;background:#f5f5f5}
-table{border-collapse:collapse;width:100%;margin-top:10px;}
-th,td{border:1px solid #ddd;padding:6px;font-size:13px;text-align:center}
-tr.medida-row td input{width:100%}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:#f3f4f6;
+  color:#0f172a;
+}
+
+/* enlaces */
+a{text-decoration:none;color:inherit}
+
+/* NAVBAR (igual que home pero compacto) */
+.navbar{
+  position:sticky;
+  top:0;
+  z-index:40;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 56px;
+  background:linear-gradient(90deg,#020617,#111827);
+  color:#f9fafb;
+  box-shadow:0 10px 30px rgba(15,23,42,0.45);
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:18px;
+}
+.brand-logo{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.brand-logo img{
+  height:30px;
+}
+.brand-divider{
+  width:1px;
+  height:24px;
+  background:rgba(248,250,252,0.35);
+}
+
+.nav-menu{
+  list-style:none;
+  display:flex;
+  align-items:center;
+  gap:24px;
+  font-size:0.82rem;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+}
+.nav-menu>li{
+  position:relative;
+  cursor:pointer;
+  padding-bottom:20px;
+}
+.nav-link{
+  color:#f9fafb;
+  text-decoration:none;
+  padding-bottom:3px;
+}
+.nav-link:hover{
+  border-bottom:2px solid #f97316;
+}
+
+/* dropdown */
+.dropdown{
+  display:none;
+  position:absolute;
+  top:60%;
+  left:0;
+  margin-top:10px;
+  background:rgba(15,23,42,0.97);
+  border-radius:10px;
+  min-width:240px;
+  padding:10px 0;
+  box-shadow:0 18px 40px rgba(0,0,0,0.45);
+  z-index:50;
+}
+.nav-menu li:hover .dropdown{
+  display:block;
+}
+.dropdown a{
+  display:block;
+  padding:8px 16px;
+  font-size:0.8rem;
+  color:#e5e7eb;
+  white-space:nowrap;
+}
+.dropdown a span{
+  display:block;
+  font-size:0.72rem;
+  color:#9ca3af;
+}
+.dropdown a:hover{
+  background:rgba(249,115,22,0.08);
+  color:#ffffff;
+}
+
+/* botón admin */
+.cta-btn{
+  background:#f97316;
+  color:#111827;
+  border-radius:999px;
+  padding:8px 18px;
+  font-size:0.8rem;
+  font-weight:600;
+  border:none;
+  text-decoration:none;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  box-shadow:0 10px 24px rgba(249,115,22,0.4);
+}
+.cta-btn:hover{
+  filter:brightness(1.05);
+}
+
+/* CONTENIDO PÁGINA */
+.page-wrapper{
+  max-width:960px;
+  margin:32px auto 40px;
+  padding:0 20px;
+}
+.card{
+  background:#ffffff;
+  border-radius:18px;
+  box-shadow:0 16px 40px rgba(15,23,42,0.12);
+  padding:24px 26px 30px;
+}
+h2{
+  font-size:1.6rem;
+  margin-bottom:10px;
+}
+.small{
+  font-size:0.86rem;
+  color:#6b7280;
+}
+h3{
+  margin-top:24px;
+  margin-bottom:8px;
+  font-size:1.05rem;
+}
+
+/* formularios */
+label{
+  display:block;
+  margin-top:12px;
+  margin-bottom:4px;
+  font-weight:600;
+  font-size:0.93rem;
+}
+input, button{
+  font-size:0.95rem;
+}
+input{
+  width:100%;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid #d1d5db;
+  outline:none;
+}
+input:focus{
+  border-color:#f97316;
+  box-shadow:0 0 0 1px rgba(249,115,22,0.35);
+}
+
+/* botones */
+button{
+  background:#111827;
+  color:#f9fafb;
+  border:none;
+  border-radius:999px;
+  padding:8px 18px;
+  cursor:pointer;
+}
+button.small-btn{
+  width:auto;
+  padding:6px 12px;
+  font-size:0.8rem;
+  margin-left:6px;
+}
+button.secondary-btn{
+  background:#000000;
+}
+button:disabled{
+  opacity:0.65;
+  cursor:not-allowed;
+}
+
+/* tablas */
+table{
+  border-collapse:collapse;
+  width:100%;
+  margin-top:10px;
+}
+th,td{
+  border:1px solid #e5e7eb;
+  padding:6px;
+  font-size:0.85rem;
+  text-align:center;
+}
+tr.medida-row td input{
+  width:100%;
+}
+
+/* resultado */
+.result{
+  margin-top:22px;
+  padding:16px 18px;
+  border-radius:14px;
+  background:#f9fafb;
+  border:1px solid #e5e7eb;
+  font-size:0.9rem;
+}
+
+/* responsive */
+@media (max-width:800px){
+  .navbar{
+    padding:10px 16px;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .page-wrapper{
+    margin-top:20px;
+    padding:0 12px;
+  }
+  .card{
+    padding:18px 16px 22px;
+  }
+}
 </style>
 """
 
 @router.get("/app/calculo", response_class=HTMLResponse)
 def app_calculo():
     return HTMLResponse(FORM_STYLE + """
+<header class="navbar">
+  <div class="brand">
+    <div class="brand-logo">
+      <img src="/static/img/logo_hd.png" alt="Hunter Douglas">
+    </div>
+    <div class="brand-divider"></div>
+    <div class="brand-logo">
+      <img src="/static/img/logo_udd.png" alt="Universidad del Desarrollo">
+    </div>
+  </div>
+
+  <nav>
+    <ul class="nav-menu">
+      <li><a href="/" class="nav-link">Inicio</a></li>
+
+      <li>
+        <span class="nav-link">Tomar tiempos ▾</span>
+        <div class="dropdown">
+          <a href="/app/real">
+            Tiempos REALES
+            <span>Captura directa en taller.</span>
+          </a>
+          <a href="/app/experiencia">
+            Tiempos EXPERIENCIA
+            <span>Estimación de jefes y operarios.</span>
+          </a>
+          <a href="/app/nominal">
+            Tiempos NOMINALES
+            <span>Valores estándar para planificación.</span>
+          </a>
+          <a href="/app/analisis">
+            Análisis de datos
+            <span>Histogramas, promedios y outliers.</span>
+          </a>
+        </div>
+      </li>
+
+      <li>
+        <span class="nav-link">Calculadoras ▾</span>
+        <div class="dropdown">
+          <a href="/app/calculo">
+            Paneles compuestos
+            <span>Capacidad del horno y días del pedido.</span>
+          </a>
+          <!-- aquí después agregamos otros talleres -->
+          <a href="/app/pintura-liquida">
+             Linea de pintura liquida
+             <span>Tiempo de pintado para un rollo en bruto.</span>
+          </a>                                                                  
+        </div>
+      </li>
+
+      <li>
+        <a href="/admin/login" class="cta-btn">Modo admin</a>
+      </li>
+    </ul>
+  </nav>
+</header>
+
+<div class="page-wrapper">
+  <div class="card">                       
+                        
+
 <h2>📏 Cálculo de producción – Paneles compuestos</h2>
 
 <p class="small">
@@ -63,8 +345,13 @@ según el área del panel.
 
 <div id="resultado" class="result" style="display:none;"></div>
 
-<a href="/"><button style="margin-top: 20px; padding: 8px 16px;">⬅ Volver al inicio</button></a>
-
+<button type="button" class="secondary-btn" style="margin-top:20px" onclick="window.location.href='/'">
+  ⬅ Volver al inicio
+</button>
+                        
+</div> <!-- .card -->
+</div>   <!-- .page-wrapper -->
+                        
 <script>
 // --- manejo de filas de medidas ---
 function addRow(ancho='', largo='', cantidad=''){

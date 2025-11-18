@@ -448,53 +448,13 @@ def productos(maquina: str = Query(...), db: Session = Depends(get_db)):
     """, {"m": maquina})
     return [r["nombre"] for r in rows]
 #----------------pagina inicio--------------
-@app.get("/", response_class=HTMLResponse)
-def home():
-    return """
-    <html>
-        <head>
-            <title>TPI - Captura de Tiempos</title>
-        </head>
-        <body style="font-family: Arial; text-align: center; margin-top: 50px;">
-            <h1>📊 TPI - Captura de Tiempos</h1>
-            <p>Selecciona una opción:</p>
-            <a href="/app/real">
-                <button style="padding: 10px 20px; margin: 10px; font-size: 16px;">
-                    Registrar tiempo REAL
-                </button>
-            </a>
-            <a href="/app/experiencia">
-                <button style="padding: 10px 20px; margin: 10px; font-size: 16px;">
-                    Registrar tiempo EXPERIENCIA
-                </button>
-            </a>
 
-            <a href="/app/nominal">
-                <button style="padding: 10px 20px; margin: 10px; font-size: 16px;">
-                    Registrar tiempo NOMINAL
-                </button>
-            </a>
-            <div style="margin-top:20px;">
-              <a href="/admin/login">
-                  <button style="padding: 10px 20px; font-size: 16px;">
-                      ✏️ Editar (admin)
-                  </button>
-              </a>
-            </div>
-            <a href="/app/analisis">
-                <button style="padding: 10px 20px; margin: 10px; font-size: 16px;">
-                    Analizar datos (real)
-                </button>
-            </a>
-            <a href="/app/calculo">
-                <button style="padding: 10px 20px; margin: 10px; font-size: 16px;">
-                    Calcular producción (paneles compuestos)
-                </button>
-            </a>
-        </body>
-    </html>
-    """
 #--------fin pagina inicio------------------
+from home import router as home_router
+app.include_router(home_router)
+
+from fastapi.staticfiles import StaticFiles
+app.mount("/static",StaticFiles(directory="static"), name="static")
 
 # -------- Modelos de entrada --------
 class MedicionReal(BaseModel):
@@ -1065,3 +1025,7 @@ app.include_router(analysis_router)
 
 from calculo import router as calculo_router
 app.include_router(calculo_router)
+
+from calculo_pint_liquida import router as calculo_pint_liquida_router
+app.include_router (calculo_pint_liquida_router)
+
