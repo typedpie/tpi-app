@@ -269,6 +269,10 @@ def app_pintura_liquida():
             Línea de pintura líquida
             <span>Tiempo estimado por rollo.</span>
           </a>
+          <a href="/app/taller-pintura">
+            Taller de pintura
+            <span> Tiempo de pintado para linea electroestatica o electroliquida.</span>
+          </a>              
         </div>
       </li>
 

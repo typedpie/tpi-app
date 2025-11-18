@@ -290,7 +290,11 @@ def app_calculo():
           <a href="/app/pintura-liquida">
              Linea de pintura liquida
              <span>Tiempo de pintado para un rollo en bruto.</span>
-          </a>                                                                  
+          </a>
+          <a href="/app/taller-pintura">
+              Taller de pintura
+              <span> Tiempo de pintado para linea electroestatica o electroliquida.</span>
+          </a>                                                                                
         </div>
       </li>
 
