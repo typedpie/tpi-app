@@ -1034,3 +1034,7 @@ app.include_router(calc_taller_pintura_router)
 
 from Calculo_Taller_Madera import router as Calculo_Taller_Madera_router
 app.include_router(Calculo_Taller_Madera_router)
+from calculo_sliding import router as calculo_sliding_router
+app.include_router(calculo_sliding_router)
+from Taller_punzonado import router as Taller_punzonado_router
+app.include_router(Taller_punzonado_router)
