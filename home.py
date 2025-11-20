@@ -273,6 +273,11 @@ def home():
                                     <span>Tiempo de pintado para un rollo en bruto.</span>
                                 </a>
                                 <a href="/app/taller-pintura">
+                                    Taller de pintura
+                                    <span> Tiempo de pintado para linea electroestatica o electroliquida.</span>
+                                <a href="/app/taller-madera">
+                                    taller de madera
+                                    <span> Tiempo de procesos para la produccion en taller madera.</span>
                                     Taller de Pintura
                                     <span> Tiempo de pintado para linea electroestatica o electroliquida.</span>
                                 </a>
