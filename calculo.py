@@ -294,6 +294,10 @@ def app_calculo():
           <a href="/app/taller-pintura">
               Taller de pintura
               <span> Tiempo de pintado para linea electroestatica o electroliquida.</span>
+          </a>
+          <a href="/app/taller-punzonado">
+              Taller de Punzonado
+              <span> Tiempo para de produccion para el taller de punzonado.</span>
           </a>                                                                                
         </div>
       </li>
