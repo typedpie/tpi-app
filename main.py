@@ -1029,3 +1029,8 @@ app.include_router(calculo_router)
 from calculo_pint_liquida import router as calculo_pint_liquida_router
 app.include_router (calculo_pint_liquida_router)
 
+from calc_taller_pintura import router as calc_taller_pintura_router
+app.include_router(calc_taller_pintura_router)
+
+from Calculo_Taller_Madera import router as Calculo_Taller_Madera_router
+app.include_router(Calculo_Taller_Madera_router)
