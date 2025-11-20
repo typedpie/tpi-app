@@ -276,6 +276,9 @@ def home():
                                     Taller de Pintura
                                     <span> Tiempo de pintado para linea electroestatica o electroliquida.</span>
                                 </a>
+                                <a href="/app/sliding-folding">
+                                    Taller de Sliding & Folding
+                                    <span>Tiempo de fabricación para ventanas correderas.</span>
                                 <a href="/app/taller-punzonado">
                                     Taller de Punzonado
                                     <span> Tiempo para de produccion para el taller de punzonado.</span>
