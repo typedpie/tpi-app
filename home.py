@@ -264,17 +264,21 @@ def home():
                             <span class="nav-link">Calculadoras ▾</span>
                             <div class="dropdown">
                                 <a href="/app/calculo">
-                                    Paneles compuestos
+                                    Paneles Compuestos
                                     <span>Capacidad de producción y días de trabajo por pedido.</span>
                                 </a>
                                 <!-- cuando tengas más talleres, los agregamos acá -->
                                 <a href="/app/pintura-liquida">
-                                    Linea de pintura liquida
+                                    Linea de Pintura liquida
                                     <span>Tiempo de pintado para un rollo en bruto.</span>
                                 </a>
                                 <a href="/app/taller-pintura">
-                                    Taller de pintura
+                                    Taller de Pintura
                                     <span> Tiempo de pintado para linea electroestatica o electroliquida.</span>
+                                </a>
+                                <a href="/app/taller-punzonado">
+                                    Taller de Punzonado
+                                    <span> Tiempo para de produccion para el taller de punzonado.</span>
                                 </a>
                             </div>
                         </li>

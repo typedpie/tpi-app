@@ -272,6 +272,10 @@ def app_taller_pintura():
             Taller de pintura (riel)
             <span>Tiempo estimado para productos colgados.</span>
           </a>
+          <a href="/app/taller-punzonado">
+            Taller de Punzonado
+            <span> Tiempo para de produccion para el taller de punzonado.</span>
+          </a>
         </div>
       </li>
 

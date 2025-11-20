@@ -1031,3 +1031,6 @@ app.include_router (calculo_pint_liquida_router)
 
 from calc_taller_pintura import router as calc_taller_pintura_router
 app.include_router(calc_taller_pintura_router)
+
+from Taller_punzonado import router as Taller_punzonado_router
+app.include_router(Taller_punzonado_router)
